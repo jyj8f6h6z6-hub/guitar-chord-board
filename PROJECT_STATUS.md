@@ -1,11 +1,12 @@
 # PROJECT_STATUS
 
-> 專案：Guitar Chord Board  
-> 版本：0.1.0  
-> 狀態：MVP 基礎版已架設，待本機安裝依賴與驗收  
-> 最後更新：2026-07-29  
-> 主要開發環境：VS Code  
-> 原始碼管理與部署：GitHub／GitHub Pages
+> 專案：Guitar Chord Board
+> 版本：0.2.0
+> 狀態：第二階段「資料品質與多把位」已完成，待使用者本機驗收及推送
+> 最後更新：2026-07-29
+> 主要開發環境：VS Code
+> Repository：`jyj8f6h6z6-hub/guitar-chord-board`
+> 部署：GitHub Actions／GitHub Pages
 
 ## 1. 專案目標
 
@@ -14,61 +15,80 @@
 1. 輸入單一和弦名稱，查詢按法與組成音。
 2. 一次輸入多個歌曲和弦，由上而下顯示全部按法。
 3. 在每個主和弦右側查看常見變化、掛留和弦及轉位和弦。
-4. 在桌機與手機上清楚閱讀和弦圖。
+4. 在同一和弦已有多個按法時切換開放位、簡易位或封閉位。
+5. 在桌機與手機上清楚閱讀和弦圖。
 
-## 2. 目前完成項目
+## 2. 里程碑狀態
 
-### 專案與開發環境
+### 0.1.0：MVP 基礎版
 
-- [x] 建立 React＋TypeScript＋Vite 專案結構。
-- [x] 建立 VS Code workspace 設定。
-- [x] 建立 VS Code 推薦擴充套件清單。
-- [x] 建立 VS Code 開發、型別檢查及建置工作。
-- [x] 建立瀏覽器偵錯設定。
-- [x] 建立 `.gitignore`。
-- [x] 建立 GitHub Pages deployment workflow。
+- [x] React＋TypeScript＋Vite 專案架構。
+- [x] 單一和弦查詢與歌曲和弦清單。
+- [x] Tonal 組成音解析。
+- [x] SVG 六弦指板、琴格、空弦、禁彈、指法與橫按。
+- [x] 相關和弦與轉位替換。
+- [x] VS Code workspace、Git 與 GitHub Pages workflow。
+- [x] 本機安裝、型別檢查、建置及 GitHub Pages 首次部署成功。
 
-### 功能
+### 0.2.0：資料品質與多把位
 
-- [x] 建立「單一和弦查詢」模式。
-- [x] 建立「歌曲和弦清單」模式。
-- [x] 支援空格、逗號、頓號、直線與換行分隔。
-- [x] 支援移除重複和弦選項。
-- [x] 使用 Tonal 解析和弦名稱與組成音。
-- [x] 使用 SVG 繪製六弦、琴格、指法、空弦、禁彈與橫按。
-- [x] 顯示按法難度。
-- [x] 顯示相關和弦與常見轉位。
-- [x] 點擊相關和弦可替換歌曲清單中的和弦。
-- [x] 建立桌機與手機響應式版面。
+- [x] 將資料模型改為一個和弦可對應多個按法。
+- [x] 在完整和弦卡加入「切換把位」控制。
+- [x] 為 C、G、A、Am、F、D、Dm、E、Em、B、Bm 增加替代把位。
+- [x] 新增 F#、F#m、F#m7、Bb、Bbm、Bb7、Bbmaj7。
+- [x] 新增 Cadd9、Em7、Dm7、Bm7、Amaj7、G6。
+- [x] 支援常見同音異名：A# 使用 Bb 指法、Gb 使用 F# 指法。
+- [x] 同音異名查詢顯示實際採用的音名與按法。
+- [x] 加入和弦資料啟動時驗證：ID、六弦長度、琴格範圍及橫按範圍。
+- [x] 改善手機版卡片、按法選擇器、組成音與橫向捲動。
+- [x] 頁首 GitHub 連結改為實際 repository。
+- [x] 統計改為由資料庫自動計算。
 
-### 和弦資料
+## 3. 目前資料量
 
-- [x] 收錄 C、G、A、Am、F、D、Dm、E、Em、B、Bm 等基礎按法。
-- [x] 收錄部分 7、maj7、sus2、sus4、dim 和弦。
-- [x] 收錄 C/E、C/G、G/B、G/D、Am/C、Am/E、F/A、F/C、D/F# 等轉位。
-- [x] 目前資料量為 48 個按法，且和弦 symbol 不重複。
+- 吉他按法：**72**
+- 不重複和弦名稱：**61**
+- 已提供兩種以上按法的常用和弦：**11**
 
-## 3. 目前未完成／待確認
+資料陣列順序固定為：
 
-- [ ] 在使用者電腦執行 `npm install` 並產生 `package-lock.json`。
-- [ ] 執行 `npm run typecheck` 與 `npm run build` 完整驗收。
-- [ ] 建立實際 GitHub repository。
-- [ ] 將本機專案連接到 GitHub remote。
-- [ ] 在 GitHub 設定 Pages 的 Source 為 GitHub Actions。
-- [ ] 將頁首 GitHub 連結替換為實際 repository 網址。
-- [ ] 確認 repository 名稱；若不是 `guitar-chord-board`，修改 `vite.config.ts`。
-- [ ] 逐一進行和弦指法的音樂性與人體工學校對。
+```text
+低音 E、A、D、G、B、高音 e
+```
 
-## 4. 已知限制
+`x` 代表不彈，`0` 代表空弦，正整數代表絕對琴格。
 
-1. 每個和弦目前只有一種主要按法，尚未提供把位切換。
-2. 相關和弦使用預先定義的實用規則，尚未根據歌曲調性自動推薦。
-3. 和弦指法資料為專案內建資料，並非完整和弦資料庫。
-4. 尚未支援自訂調弦、七弦吉他、烏克麗麗或左手模式。
-5. 尚未提供登入、雲端儲存或歌曲收藏；MVP 為純前端靜態網站。
-6. 目前沒有自動化測試。
+## 4. 0.2.0 驗收項目
 
-## 5. 技術架構
+請在使用者本機 VS Code 執行：
+
+```bash
+npm run typecheck
+npm run build
+npm run dev
+```
+
+瀏覽器測試：
+
+- [ ] `C` 可在開放位與第 3 格封閉位間切換。
+- [ ] `F` 預設顯示簡易位，並可切換完整橫按。
+- [ ] `A#` 顯示採用 `Bb` 按法，組成音為 Bb、D、F。
+- [ ] `Gb` 可顯示 `F#` 的按法。
+- [ ] `F#m`、`Bbmaj7`、`Cadd9`、`Bm7` 可正常顯示。
+- [ ] 歌曲模式輸入 `C G Am F`，各主要和弦可切換把位。
+- [ ] 手機寬度下相關和弦及把位按鈕可水平滑動，頁面沒有橫向溢位。
+- [ ] GitHub Actions 完成部署，公開網站顯示版本 `0.2.0`。
+
+## 5. 已知限制
+
+1. 多把位目前集中於最常用的大、小和弦，尚未讓所有 7、maj7、sus 和弦都有替代按法。
+2. 指法資料為專案內建資料，仍需逐筆進行音樂性與人體工學校對。
+3. 相關和弦仍採預先定義規則，尚未根據歌曲調性或前後文推薦。
+4. 尚未支援移調、段落、歌曲保存、列印版或 PDF。
+5. 尚未支援左手模式、自訂調弦、七弦吉他或烏克麗麗。
+6. 尚未建立正式單元測試框架；目前為資料啟動驗證與 TypeScript build 檢查。
+
+## 6. 技術架構
 
 | 項目 | 選擇 | 用途 |
 |---|---|---|
@@ -77,103 +97,47 @@
 | 開發／建置 | Vite | 本機伺服器與正式版建置 |
 | 音樂理論 | Tonal | 和弦解析、組成音與音程 |
 | 和弦圖 | SVG | 清晰且可縮放的吉他按法圖 |
-| 資料 | TypeScript 靜態資料 | 第一版和弦按法資料庫 |
+| 資料 | TypeScript 靜態資料 | 多按法和弦資料庫 |
 | 原始碼管理 | Git／GitHub | 版本控制與協作 |
-| 部署 | GitHub Actions＋Pages | 自動建置與靜態網站發布 |
+| 部署 | GitHub Actions＋Pages | push 到 `main` 自動發布 |
 
-## 6. 主要資料流
+## 7. 主要資料流
 
 ```text
 使用者輸入
   ↓
-normalizeChordName / parseChordInput
+normalizeChordName
   ↓
-和弦名稱陣列
+resolveChordAlias（A# → Bb、Gb → F#）
+  ↓
+和弦名稱
   ├─ Tonal → 組成音、音程、正式名稱
-  ├─ chordShapes → 吉他按法
+  ├─ chordShapes → 一個或多個吉他按法
   └─ relatedChords → 相關變化與轉位
   ↓
-ChordCard / ChordDiagram
-  ↓
-單一查詢畫面或歌曲清單畫面
+ChordCard
+  ├─ Shape selector → 切換把位
+  └─ ChordDiagram → SVG 指板
 ```
 
-## 7. 近期開發順序
+## 8. 下一階段建議：0.3.0 歌曲工具
 
-### P0：啟動與發布
+優先順序：
 
-1. 在 VS Code 開啟專案。
-2. 執行 `npm install`。
-3. 執行 `npm run dev`。
-4. 檢查 C、Cmaj7、C/G、F、Bm 等圖形。
-5. 執行 `npm run typecheck` 與 `npm run build`。
-6. 建立 GitHub repository 並推送 `main`。
-7. 啟用 GitHub Pages。
+1. 加入整首歌升降 Key／移調。
+2. 加入歌曲名稱與 Verse、Chorus 等段落。
+3. 使用 localStorage 保存最近歌曲。
+4. 增加列印友善版面。
+5. 增加複製歌曲和弦清單功能。
+6. 建立 Vitest 單元測試，覆蓋輸入解析、別名、移調與資料驗證。
 
-### P1：資料品質
-
-1. 為每個和弦增加至少兩種按法。
-2. 增加指法來源與校對註記。
-3. 增加降記號與升記號同音異名對應，例如 Bb／A#。
-4. 為無指法但 Tonal 可解析的和弦顯示更明確狀態。
-
-### P2：歌曲工具
-
-1. 加入歌曲名稱與段落，例如 Verse、Chorus。
-2. 支援拖曳調整和弦順序。
-3. 支援升降 Key 與移調。
-4. 將歌曲和弦清單匯出成列印版或 PDF。
-5. 使用 localStorage 保存最近使用的歌曲。
-
-### P3：進階推薦
-
-1. 偵測可能的歌曲調性。
-2. 顯示調內和弦與級數。
-3. 根據前後和弦推薦替代和弦。
-4. 依初學、開放和弦、封閉和弦或爵士按法篩選。
-
-## 8. GitHub 初次設定
-
-建議 repository 名稱：`guitar-chord-board`
+## 9. 本次更新後的 Git 操作
 
 ```bash
-git init
+git status
 git add .
-git commit -m "feat: initialize guitar chord board MVP"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/guitar-chord-board.git
-git push -u origin main
+git commit -m "feat: add multiple chord positions and enharmonic aliases"
+git push
 ```
 
-推送後到 GitHub：
-
-```text
-Settings → Pages → Build and deployment → Source → GitHub Actions
-```
-
-## 9. 完成定義
-
-MVP 可標記為完成，必須同時符合：
-
-- [ ] `npm run build` 成功。
-- [ ] 單一和弦查詢可顯示按法與組成音。
-- [ ] 多和弦輸入可保留輸入順序。
-- [ ] 相關和弦可正常替換主和弦。
-- [ ] 桌機、平板與手機沒有明顯版面溢位。
-- [ ] GitHub Pages 公開網址可正常開啟。
-- [ ] README 與 PROJECT_STATUS 反映實際狀態。
-
-## 10. 下一個明確工作
-
-**在本機 VS Code 執行安裝與建置驗收，取得 `package-lock.json`，再建立 GitHub repository 並首次推送。**
-
-## 11. 2026-07-29 驗證紀錄
-
-- [x] 所有 JSON 設定檔可正常解析。
-- [x] GitHub Actions YAML 結構可正常解析。
-- [x] TypeScript 原始碼通過離線型別結構檢查。
-- [x] 48 筆和弦資料皆包含六弦 fret 與 finger 欄位。
-- [x] 和弦 ID 與 symbol 無重複。
-- [x] 多和弦解析測試通過：`C, G\nAm、F` → `C G Am F`。
-- [x] C 相關和弦測試通過：包含 `C7`、`Cdim`、`C/E`、`C/G`。
-- [ ] 因目前建置環境無法連線至 npm registry，尚未執行真實 dependency 安裝與 Vite production build；此項必須在使用者本機完成。
+推送後由 GitHub Actions 自動重新建置與發布。

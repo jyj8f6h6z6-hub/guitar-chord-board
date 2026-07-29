@@ -3,6 +3,7 @@ import type { ChordShape } from "../../types/chord";
 interface ChordDiagramProps {
   shape: ChordShape;
   compact?: boolean;
+  displaySymbol?: string;
 }
 
 const STRING_X = [40, 68, 96, 124, 152, 180] as const;
@@ -10,8 +11,9 @@ const GRID_TOP = 54;
 const FRET_HEIGHT = 34;
 const FRET_COUNT = 5;
 
-export function ChordDiagram({ shape, compact = false }: ChordDiagramProps) {
+export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDiagramProps) {
   const width = compact ? 136 : 220;
+  const symbol = displaySymbol ?? shape.symbol;
 
   return (
     <svg
@@ -19,9 +21,9 @@ export function ChordDiagram({ shape, compact = false }: ChordDiagramProps) {
       viewBox="0 0 220 250"
       width={width}
       role="img"
-      aria-label={`${shape.symbol} 吉他和弦按法圖`}
+      aria-label={`${symbol} 吉他和弦按法圖`}
     >
-      <title>{shape.symbol} 吉他和弦按法圖</title>
+      <title>{symbol} 吉他和弦按法圖</title>
 
       {shape.baseFret > 1 && (
         <text x="9" y={GRID_TOP + 22} className="diagram-base-fret">
@@ -123,24 +125,17 @@ export function ChordDiagram({ shape, compact = false }: ChordDiagramProps) {
         );
       })}
 
-      <text x="40" y="242" textAnchor="middle" className="diagram-string-name">
-        E
-      </text>
-      <text x="68" y="242" textAnchor="middle" className="diagram-string-name">
-        A
-      </text>
-      <text x="96" y="242" textAnchor="middle" className="diagram-string-name">
-        D
-      </text>
-      <text x="124" y="242" textAnchor="middle" className="diagram-string-name">
-        G
-      </text>
-      <text x="152" y="242" textAnchor="middle" className="diagram-string-name">
-        B
-      </text>
-      <text x="180" y="242" textAnchor="middle" className="diagram-string-name">
-        e
-      </text>
+      {(["E", "A", "D", "G", "B", "e"] as const).map((name, index) => (
+        <text
+          key={name}
+          x={STRING_X[index]}
+          y="242"
+          textAnchor="middle"
+          className="diagram-string-name"
+        >
+          {name}
+        </text>
+      ))}
     </svg>
   );
 }

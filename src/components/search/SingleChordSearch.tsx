@@ -23,7 +23,7 @@ export function SingleChordSearch() {
       <div className="workspace__intro">
         <p className="eyebrow">模式一</p>
         <h2 id="single-mode-title">查一個不熟悉的和弦</h2>
-        <p>輸入 C、F#m、Cmaj7 或 C/G；系統會顯示按法與組成音。</p>
+        <p>輸入 C、F#m、Bb、Cmaj7 或 C/G；系統會顯示按法、組成音，並可切換已收錄把位。</p>
       </div>
 
       <form className="search-panel" onSubmit={handleSubmit}>
@@ -40,7 +40,7 @@ export function SingleChordSearch() {
             顯示按法
           </button>
         </div>
-        <p className="input-help">支援 #、♯、b、♭ 與斜線和弦格式。</p>
+        <p className="input-help">支援 #、♯、b、♭、同音異名與斜線和弦格式，例如 A# 會套用 Bb 按法。</p>
       </form>
 
       {theory.valid ? (

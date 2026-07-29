@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
+import { CHORD_SHAPE_COUNT, CHORD_SYMBOL_COUNT } from "./data/chordShapes";
 import type { AppMode } from "./types/chord";
+
+const REPOSITORY_URL = "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
 
 function App() {
   const [mode, setMode] = useState<AppMode>("single");
@@ -18,7 +21,7 @@ function App() {
             <small>和弦按法與組成音工具</small>
           </span>
         </a>
-        <a className="github-link" href="https://github.com/" target="_blank" rel="noreferrer">
+        <a className="github-link" href={REPOSITORY_URL} target="_blank" rel="noreferrer">
           GitHub
         </a>
       </header>
@@ -34,16 +37,16 @@ function App() {
           </div>
           <div className="hero__stats" aria-label="專案目前收錄資訊">
             <div>
-              <strong>40+</strong>
-              <span>第一版按法</span>
+              <strong>{CHORD_SHAPE_COUNT}</strong>
+              <span>吉他按法</span>
             </div>
             <div>
-              <strong>2</strong>
-              <span>操作模式</span>
+              <strong>{CHORD_SYMBOL_COUNT}</strong>
+              <span>和弦名稱</span>
             </div>
             <div>
-              <strong>SVG</strong>
-              <span>清晰指板</span>
+              <strong>2+</strong>
+              <span>常用和弦把位</span>
             </div>
           </div>
         </section>
@@ -69,7 +72,7 @@ function App() {
       </main>
 
       <footer>
-        <span>Guitar Chord Board · MVP 0.1.0</span>
+        <span>Guitar Chord Board · 0.2.0</span>
         <span>React + TypeScript + Tonal + SVG</span>
       </footer>
     </div>

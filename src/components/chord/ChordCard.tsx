@@ -1,4 +1,8 @@
-import { findChordShape } from "../../data/chordShapes";
+import { useEffect, useState } from "react";
+import {
+  findChordShapes,
+  getShapeVariantLabel,
+} from "../../data/chordShapes";
 import { getChordTheory } from "../../services/chordTheory";
 import { ChordDiagram } from "./ChordDiagram";
 
@@ -9,8 +13,16 @@ interface ChordCardProps {
 }
 
 export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps) {
-  const shape = findChordShape(symbol);
+  const shapes = findChordShapes(symbol);
   const theory = getChordTheory(symbol);
+  const [selectedShapeId, setSelectedShapeId] = useState(shapes[0]?.id ?? "");
+
+  useEffect(() => {
+    setSelectedShapeId(shapes[0]?.id ?? "");
+  }, [symbol]);
+
+  const shape = shapes.find((candidate) => candidate.id === selectedShapeId) ?? shapes[0];
+  const isAlias = theory.resolvedSymbol !== theory.symbol;
 
   const content = (
     <>
@@ -18,36 +30,68 @@ export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps)
         <div>
           <p className="eyebrow">{compact ? "相關和弦" : "和弦"}</p>
           <h3>{symbol}</h3>
-          {!compact && <p className="chord-card__name">{shape?.displayName ?? theory.name}</p>}
+          {!compact && (
+            <>
+              <p className="chord-card__name">{shape?.displayName ?? theory.name}</p>
+              {isAlias && (
+                <p className="chord-card__alias">按法與音名採用 {theory.resolvedSymbol}</p>
+              )}
+            </>
+          )}
         </div>
         {!compact && shape && (
-          <span className="difficulty" aria-label={`難度 ${shape.difficulty} / 5`}>
-            難度 {shape.difficulty}/5
-          </span>
+          <div className="chord-card__badges">
+            <span className="position-badge">{getShapeVariantLabel(shape)}</span>
+            <span className="difficulty" aria-label={`難度 ${shape.difficulty} / 5`}>
+              難度 {shape.difficulty}/5
+            </span>
+          </div>
         )}
       </div>
 
       {shape ? (
-        <ChordDiagram shape={shape} compact={compact} />
+        <ChordDiagram shape={shape} compact={compact} displaySymbol={symbol} />
       ) : (
         <div className="empty-diagram">
-          <span>尚未收錄按法</span>
+          <span>可解析組成音，但尚未收錄吉他按法</span>
+        </div>
+      )}
+
+      {!compact && shapes.length > 1 && (
+        <div className="shape-selector" role="group" aria-label={`${symbol} 按法選擇`}>
+          <span className="meta-label">切換把位</span>
+          <div className="shape-selector__buttons">
+            {shapes.map((candidate, index) => (
+              <button
+                key={candidate.id}
+                type="button"
+                className={candidate.id === shape?.id ? "is-active" : ""}
+                onClick={() => setSelectedShapeId(candidate.id)}
+                aria-pressed={candidate.id === shape?.id}
+              >
+                {index + 1}. {getShapeVariantLabel(candidate)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {!compact && (
-        <div className="chord-card__meta">
-          <div>
-            <span className="meta-label">組成音</span>
-            <strong>{theory.valid ? theory.notes.join(" · ") : "無法解析"}</strong>
-          </div>
-          {theory.bass && (
+        <>
+          <div className="chord-card__meta">
             <div>
-              <span className="meta-label">低音</span>
-              <strong>{theory.bass}</strong>
+              <span className="meta-label">組成音</span>
+              <strong>{theory.valid ? theory.notes.join(" · ") : "無法解析"}</strong>
             </div>
-          )}
-        </div>
+            {theory.bass && (
+              <div>
+                <span className="meta-label">低音</span>
+                <strong>{theory.bass}</strong>
+              </div>
+            )}
+          </div>
+          <p className="finger-legend">手指：1 食指 · 2 中指 · 3 無名指 · 4 小指</p>
+        </>
       )}
     </>
   );

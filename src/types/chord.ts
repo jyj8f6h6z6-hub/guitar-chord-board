@@ -17,11 +17,13 @@ export interface ChordShape {
   barres?: readonly Barre[];
   difficulty: 1 | 2 | 3 | 4 | 5;
   position: "open" | "movable";
+  variantLabel?: string;
   tags: readonly string[];
 }
 
 export interface ChordTheoryResult {
   symbol: string;
+  resolvedSymbol: string;
   name: string;
   notes: string[];
   intervals: string[];

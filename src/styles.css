@@ -661,3 +661,140 @@ footer {
     flex-direction: column;
   }
 }
+
+/* 0.2.0：多把位、同音異名與手機操作改善 */
+.chord-card__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.position-badge {
+  white-space: nowrap;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chord-card__alias {
+  margin: 7px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shape-selector {
+  margin: 4px 0 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(16, 18, 26, 0.66);
+}
+
+.shape-selector__buttons {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.shape-selector__buttons button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.shape-selector__buttons button:hover,
+.shape-selector__buttons button.is-active {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.14);
+  color: var(--accent-strong);
+}
+
+.finger-legend {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.song-row__main .chord-card {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.related-scroll {
+  scrollbar-color: var(--line) transparent;
+}
+
+@media (max-width: 600px) {
+  .workspace {
+    padding-top: 26px;
+  }
+
+  .search-panel,
+  .chord-card {
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .chord-card__header {
+    min-height: 56px;
+  }
+
+  .chord-card h3 {
+    font-size: 1.7rem;
+  }
+
+  .chord-card__badges {
+    gap: 5px;
+  }
+
+  .position-badge,
+  .difficulty {
+    padding: 6px 8px;
+    font-size: 0.66rem;
+  }
+
+  .chord-card__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-card__meta > div {
+    min-height: 58px;
+  }
+
+  .empty-diagram {
+    min-height: 190px;
+    padding: 18px;
+    text-align: center;
+  }
+
+  .song-options {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .related-scroll {
+    margin-inline: -4px;
+    scroll-padding-inline: 4px;
+  }
+
+  .chord-card--compact {
+    flex-basis: 148px;
+    padding: 12px;
+  }
+}

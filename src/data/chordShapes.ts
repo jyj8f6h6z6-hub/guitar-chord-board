@@ -1,4 +1,5 @@
 import type { ChordShape } from "../types/chord";
+import { resolveChordAlias } from "../utils/chordAliases";
 
 export const CHORD_SHAPES: readonly ChordShape[] = [
   {
@@ -545,14 +546,404 @@ export const CHORD_SHAPES: readonly ChordShape[] = [
     position: "movable",
     tags: ["barre", "minor"],
   },
+  {
+    id: "c-major-barre-3",
+    symbol: "C",
+    displayName: "C Major",
+    frets: ["x", 3, 5, 5, 5, 3],
+    fingers: [null, 1, 3, 3, 3, 1],
+    baseFret: 3,
+    barres: [
+      { fret: 3, fromString: 2, toString: 6, finger: 1 },
+      { fret: 5, fromString: 3, toString: 5, finger: 3 },
+    ],
+    difficulty: 4,
+    position: "movable",
+    variantLabel: "第 3 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "g-major-barre-3",
+    symbol: "G",
+    displayName: "G Major",
+    frets: [3, 5, 5, 4, 3, 3],
+    fingers: [1, 3, 4, 2, 1, 1],
+    baseFret: 3,
+    barres: [{ fret: 3, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 3 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "a-major-barre-5",
+    symbol: "A",
+    displayName: "A Major",
+    frets: [5, 7, 7, 6, 5, 5],
+    fingers: [1, 3, 4, 2, 1, 1],
+    baseFret: 5,
+    barres: [{ fret: 5, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 5 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "a-minor-barre-5",
+    symbol: "Am",
+    displayName: "A Minor",
+    frets: [5, 7, 7, 5, 5, 5],
+    fingers: [1, 3, 4, 1, 1, 1],
+    baseFret: 5,
+    barres: [{ fret: 5, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 5 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "f-major-easy",
+    symbol: "F",
+    displayName: "F Major",
+    frets: ["x", "x", 3, 2, 1, 1],
+    fingers: [null, null, 3, 2, 1, 1],
+    baseFret: 1,
+    barres: [{ fret: 1, fromString: 5, toString: 6, finger: 1 }],
+    difficulty: 2,
+    position: "open",
+    variantLabel: "四弦簡易位",
+    tags: ["beginner", "open", "alternative"],
+  },
+  {
+    id: "d-major-barre-5",
+    symbol: "D",
+    displayName: "D Major",
+    frets: ["x", 5, 7, 7, 7, 5],
+    fingers: [null, 1, 3, 3, 3, 1],
+    baseFret: 5,
+    barres: [
+      { fret: 5, fromString: 2, toString: 6, finger: 1 },
+      { fret: 7, fromString: 3, toString: 5, finger: 3 },
+    ],
+    difficulty: 4,
+    position: "movable",
+    variantLabel: "第 5 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "d-minor-barre-5",
+    symbol: "Dm",
+    displayName: "D Minor",
+    frets: ["x", 5, 7, 7, 6, 5],
+    fingers: [null, 1, 3, 4, 2, 1],
+    baseFret: 5,
+    barres: [{ fret: 5, fromString: 2, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 5 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "e-major-barre-7",
+    symbol: "E",
+    displayName: "E Major",
+    frets: ["x", 7, 9, 9, 9, 7],
+    fingers: [null, 1, 3, 3, 3, 1],
+    baseFret: 7,
+    barres: [
+      { fret: 7, fromString: 2, toString: 6, finger: 1 },
+      { fret: 9, fromString: 3, toString: 5, finger: 3 },
+    ],
+    difficulty: 4,
+    position: "movable",
+    variantLabel: "第 7 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "e-minor-barre-7",
+    symbol: "Em",
+    displayName: "E Minor",
+    frets: ["x", 7, 9, 9, 8, 7],
+    fingers: [null, 1, 3, 4, 2, 1],
+    baseFret: 7,
+    barres: [{ fret: 7, fromString: 2, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 7 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "b-major-barre-7",
+    symbol: "B",
+    displayName: "B Major",
+    frets: [7, 9, 9, 8, 7, 7],
+    fingers: [1, 3, 4, 2, 1, 1],
+    baseFret: 7,
+    barres: [{ fret: 7, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 7 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "b-minor-barre-7",
+    symbol: "Bm",
+    displayName: "B Minor",
+    frets: [7, 9, 9, 7, 7, 7],
+    fingers: [1, 3, 4, 1, 1, 1],
+    baseFret: 7,
+    barres: [{ fret: 7, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 7 格封閉位",
+    tags: ["barre", "alternative"],
+  },
+  {
+    id: "f-sharp-major-barre",
+    symbol: "F#",
+    displayName: "F# Major",
+    frets: [2, 4, 4, 3, 2, 2],
+    fingers: [1, 3, 4, 2, 1, 1],
+    baseFret: 2,
+    barres: [{ fret: 2, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 2 格封閉位",
+    tags: ["barre", "major"],
+  },
+  {
+    id: "f-sharp-minor-barre",
+    symbol: "F#m",
+    displayName: "F# Minor",
+    frets: [2, 4, 4, 2, 2, 2],
+    fingers: [1, 3, 4, 1, 1, 1],
+    baseFret: 2,
+    barres: [{ fret: 2, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 2 格封閉位",
+    tags: ["barre", "minor"],
+  },
+  {
+    id: "f-sharp-minor-7-barre",
+    symbol: "F#m7",
+    displayName: "F# Minor 7",
+    frets: [2, 4, 2, 2, 2, 2],
+    fingers: [1, 3, 1, 1, 1, 1],
+    baseFret: 2,
+    barres: [{ fret: 2, fromString: 1, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 2 格封閉位",
+    tags: ["barre", "minor-seventh"],
+  },
+  {
+    id: "b-flat-major-barre",
+    symbol: "Bb",
+    displayName: "B♭ Major",
+    frets: ["x", 1, 3, 3, 3, 1],
+    fingers: [null, 1, 3, 3, 3, 1],
+    baseFret: 1,
+    barres: [
+      { fret: 1, fromString: 2, toString: 6, finger: 1 },
+      { fret: 3, fromString: 3, toString: 5, finger: 3 },
+    ],
+    difficulty: 4,
+    position: "movable",
+    variantLabel: "第 1 格封閉位",
+    tags: ["barre", "major"],
+  },
+  {
+    id: "b-flat-minor-barre",
+    symbol: "Bbm",
+    displayName: "B♭ Minor",
+    frets: ["x", 1, 3, 3, 2, 1],
+    fingers: [null, 1, 3, 4, 2, 1],
+    baseFret: 1,
+    barres: [{ fret: 1, fromString: 2, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 1 格封閉位",
+    tags: ["barre", "minor"],
+  },
+  {
+    id: "b-flat-7-barre",
+    symbol: "Bb7",
+    displayName: "B♭ Dominant 7",
+    frets: ["x", 1, 3, 1, 3, 1],
+    fingers: [null, 1, 2, 1, 3, 1],
+    baseFret: 1,
+    barres: [{ fret: 1, fromString: 2, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 1 格封閉位",
+    tags: ["barre", "seventh"],
+  },
+  {
+    id: "b-flat-major-7-barre",
+    symbol: "Bbmaj7",
+    displayName: "B♭ Major 7",
+    frets: ["x", 1, 3, 2, 3, 1],
+    fingers: [null, 1, 3, 2, 4, 1],
+    baseFret: 1,
+    barres: [{ fret: 1, fromString: 2, toString: 6, finger: 1 }],
+    difficulty: 3,
+    position: "movable",
+    variantLabel: "第 1 格封閉位",
+    tags: ["barre", "major-seventh"],
+  },
+  {
+    id: "c-add9-open",
+    symbol: "Cadd9",
+    displayName: "C Add 9",
+    frets: ["x", 3, 2, 0, 3, 3],
+    fingers: [null, 2, 1, null, 3, 4],
+    baseFret: 1,
+    difficulty: 1,
+    position: "open",
+    variantLabel: "開放位",
+    tags: ["open", "add9", "common"],
+  },
+  {
+    id: "e-minor-7-open",
+    symbol: "Em7",
+    displayName: "E Minor 7",
+    frets: [0, 2, 0, 0, 0, 0],
+    fingers: [null, 2, null, null, null, null],
+    baseFret: 1,
+    difficulty: 1,
+    position: "open",
+    variantLabel: "開放位",
+    tags: ["open", "minor-seventh"],
+  },
+  {
+    id: "d-minor-7-open",
+    symbol: "Dm7",
+    displayName: "D Minor 7",
+    frets: ["x", "x", 0, 2, 1, 1],
+    fingers: [null, null, null, 2, 1, 1],
+    baseFret: 1,
+    barres: [{ fret: 1, fromString: 5, toString: 6, finger: 1 }],
+    difficulty: 2,
+    position: "open",
+    variantLabel: "開放位",
+    tags: ["open", "minor-seventh"],
+  },
+  {
+    id: "b-minor-7-open",
+    symbol: "Bm7",
+    displayName: "B Minor 7",
+    frets: ["x", 2, 0, 2, 0, 2],
+    fingers: [null, 1, null, 2, null, 3],
+    baseFret: 1,
+    difficulty: 2,
+    position: "open",
+    variantLabel: "開放簡易位",
+    tags: ["open", "minor-seventh"],
+  },
+  {
+    id: "a-major-7-open",
+    symbol: "Amaj7",
+    displayName: "A Major 7",
+    frets: ["x", 0, 2, 1, 2, 0],
+    fingers: [null, null, 2, 1, 3, null],
+    baseFret: 1,
+    difficulty: 2,
+    position: "open",
+    variantLabel: "開放位",
+    tags: ["open", "major-seventh"],
+  },
+  {
+    id: "g6-open",
+    symbol: "G6",
+    displayName: "G Major 6",
+    frets: [3, 2, 0, 0, 0, 0],
+    fingers: [2, 1, null, null, null, null],
+    baseFret: 1,
+    difficulty: 1,
+    position: "open",
+    variantLabel: "開放位",
+    tags: ["open", "sixth"],
+  }
 ];
 
-const SHAPES_BY_SYMBOL = new Map(CHORD_SHAPES.map((shape) => [shape.symbol, shape]));
+const SHAPES_BY_SYMBOL = new Map<string, ChordShape[]>();
+
+for (const shape of CHORD_SHAPES) {
+  const current = SHAPES_BY_SYMBOL.get(shape.symbol) ?? [];
+  current.push(shape);
+  SHAPES_BY_SYMBOL.set(shape.symbol, current);
+}
+
+for (const shapes of SHAPES_BY_SYMBOL.values()) {
+  shapes.sort((left, right) => {
+    const beginnerDifference =
+      Number(right.tags.includes("beginner")) - Number(left.tags.includes("beginner"));
+    const openDifference = Number(right.position === "open") - Number(left.position === "open");
+    return beginnerDifference || openDifference || left.difficulty - right.difficulty;
+  });
+}
+
+export const CHORD_SHAPE_COUNT = CHORD_SHAPES.length;
+export const CHORD_SYMBOL_COUNT = SHAPES_BY_SYMBOL.size;
+
+export function findChordShapes(symbol: string): readonly ChordShape[] {
+  const resolvedSymbol = resolveChordAlias(symbol);
+  return SHAPES_BY_SYMBOL.get(resolvedSymbol) ?? [];
+}
 
 export function findChordShape(symbol: string): ChordShape | undefined {
-  return SHAPES_BY_SYMBOL.get(symbol);
+  return findChordShapes(symbol)[0];
 }
 
 export function hasChordShape(symbol: string): boolean {
-  return SHAPES_BY_SYMBOL.has(symbol);
+  return findChordShapes(symbol).length > 0;
 }
+
+export function getShapeVariantLabel(shape: ChordShape): string {
+  if (shape.variantLabel) {
+    return shape.variantLabel;
+  }
+
+  return shape.position === "open" ? "開放位" : `第 ${shape.baseFret} 格`;
+}
+
+function validateChordShapes(shapes: readonly ChordShape[]): void {
+  const errors: string[] = [];
+  const ids = new Set<string>();
+
+  for (const shape of shapes) {
+    if (ids.has(shape.id)) {
+      errors.push(`重複的和弦按法 id：${shape.id}`);
+    }
+    ids.add(shape.id);
+
+    if (shape.frets.length !== 6 || shape.fingers.length !== 6) {
+      errors.push(`${shape.id} 必須包含六條弦的 fret 與 finger 資料`);
+    }
+
+    for (const fret of shape.frets) {
+      if (typeof fret === "number" && (!Number.isInteger(fret) || fret < 0 || fret > 24)) {
+        errors.push(`${shape.id} 包含無效琴格：${fret}`);
+      }
+    }
+
+    for (const barre of shape.barres ?? []) {
+      if (
+        barre.fromString < 1 ||
+        barre.fromString > 6 ||
+        barre.toString < 1 ||
+        barre.toString > 6 ||
+        barre.fromString > barre.toString
+      ) {
+        errors.push(`${shape.id} 包含無效橫按範圍`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`和弦資料驗證失敗：\n${errors.join("\n")}`);
+  }
+}
+
+validateChordShapes(CHORD_SHAPES);
