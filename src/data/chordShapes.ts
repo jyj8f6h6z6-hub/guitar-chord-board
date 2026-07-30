@@ -868,13 +868,9 @@ const HAND_AUTHORED_CHORD_SHAPES: readonly ChordShape[] = [
   }
 ];
 
-const HAND_AUTHORED_SYMBOLS = new Set(
-  HAND_AUTHORED_CHORD_SHAPES.map((shape) => shape.symbol),
-);
-
 export const CHORD_SHAPES: readonly ChordShape[] = [
   ...HAND_AUTHORED_CHORD_SHAPES,
-  ...createGeneratedChordShapes(HAND_AUTHORED_SYMBOLS),
+  ...createGeneratedChordShapes(HAND_AUTHORED_CHORD_SHAPES),
 ];
 
 const SHAPES_BY_SYMBOL = new Map<string, ChordShape[]>();
@@ -890,7 +886,12 @@ for (const shapes of SHAPES_BY_SYMBOL.values()) {
     const beginnerDifference =
       Number(right.tags.includes("beginner")) - Number(left.tags.includes("beginner"));
     const openDifference = Number(right.position === "open") - Number(left.position === "open");
-    return beginnerDifference || openDifference || left.difficulty - right.difficulty;
+    return (
+      beginnerDifference ||
+      openDifference ||
+      left.baseFret - right.baseFret ||
+      left.difficulty - right.difficulty
+    );
   });
 }
 
