@@ -10,25 +10,45 @@ interface ChordCardProps {
   symbol: string;
   compact?: boolean;
   onSelect?: (symbol: string) => void;
+  selectedShapeId?: string;
+  onShapeChange?: (shapeId: string) => void;
+  eyebrow?: string;
 }
 
-export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps) {
+export function ChordCard({
+  symbol,
+  compact = false,
+  onSelect,
+  selectedShapeId,
+  onShapeChange,
+  eyebrow,
+}: ChordCardProps) {
   const shapes = findChordShapes(symbol);
   const theory = getChordTheory(symbol);
-  const [selectedShapeId, setSelectedShapeId] = useState(shapes[0]?.id ?? "");
+  const [internalSelectedShapeId, setInternalSelectedShapeId] = useState(shapes[0]?.id ?? "");
 
   useEffect(() => {
-    setSelectedShapeId(shapes[0]?.id ?? "");
-  }, [symbol]);
+    if (selectedShapeId === undefined) {
+      setInternalSelectedShapeId(shapes[0]?.id ?? "");
+    }
+  }, [symbol, selectedShapeId]);
 
-  const shape = shapes.find((candidate) => candidate.id === selectedShapeId) ?? shapes[0];
+  const activeShapeId = selectedShapeId ?? internalSelectedShapeId;
+  const shape = shapes.find((candidate) => candidate.id === activeShapeId) ?? shapes[0];
   const isAlias = theory.resolvedSymbol !== theory.symbol;
+
+  function selectShape(shapeId: string) {
+    if (selectedShapeId === undefined) {
+      setInternalSelectedShapeId(shapeId);
+    }
+    onShapeChange?.(shapeId);
+  }
 
   const content = (
     <>
       <div className="chord-card__header">
         <div>
-          <p className="eyebrow">{compact ? "相關和弦" : "和弦"}</p>
+          <p className="eyebrow">{eyebrow ?? (compact ? "相關和弦" : "和弦")}</p>
           <h3>{symbol}</h3>
           {!compact && (
             <>
@@ -48,7 +68,6 @@ export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps)
           </div>
         )}
       </div>
-
       {shape ? (
         <ChordDiagram shape={shape} compact={compact} displaySymbol={symbol} />
       ) : (
@@ -56,7 +75,6 @@ export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps)
           <span>可解析組成音，但尚未收錄吉他按法</span>
         </div>
       )}
-
       {!compact && shapes.length > 1 && (
         <div className="shape-selector" role="group" aria-label={`${symbol} 按法選擇`}>
           <span className="meta-label">切換把位</span>
@@ -66,7 +84,7 @@ export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps)
                 key={candidate.id}
                 type="button"
                 className={candidate.id === shape?.id ? "is-active" : ""}
-                onClick={() => setSelectedShapeId(candidate.id)}
+                onClick={() => selectShape(candidate.id)}
                 aria-pressed={candidate.id === shape?.id}
               >
                 {index + 1}. {getShapeVariantLabel(candidate)}
@@ -75,7 +93,6 @@ export function ChordCard({ symbol, compact = false, onSelect }: ChordCardProps)
           </div>
         </div>
       )}
-
       {!compact && (
         <>
           <div className="chord-card__meta">

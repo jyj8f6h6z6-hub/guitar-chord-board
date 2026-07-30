@@ -1,24 +1,28 @@
-import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { ChordCard } from "../chord/ChordCard";
-import { parseChordInput, uniqueChordSymbols } from "../../services/chordParser";
 import { getRelatedChords } from "../../services/relatedChords";
 
-export function SongChordMode() {
-  const [input, setInput] = useState("C G Am F");
-  const [removeDuplicates, setRemoveDuplicates] = useState(false);
+interface SongChordModeProps {
+  input: string;
+  onInputChange: (value: string) => void;
+  removeDuplicates: boolean;
+  onRemoveDuplicatesChange: (value: boolean) => void;
+  symbols: readonly string[];
+  selectedShapeIds: Readonly<Record<number, string>>;
+  onShapeChange: (index: number, shapeId: string) => void;
+  onReplaceChord: (index: number, newSymbol: string) => void;
+}
 
-  const symbols = useMemo(() => {
-    const parsed = parseChordInput(input);
-    return removeDuplicates ? uniqueChordSymbols(parsed) : parsed;
-  }, [input, removeDuplicates]);
-
-  function replaceChord(index: number, newSymbol: string) {
-    const nextSymbols = [...symbols];
-    nextSymbols[index] = newSymbol;
-    setInput(nextSymbols.join(" "));
-  }
-
+export function SongChordMode({
+  input,
+  onInputChange,
+  removeDuplicates,
+  onRemoveDuplicatesChange,
+  symbols,
+  selectedShapeIds,
+  onShapeChange,
+  onReplaceChord,
+}: SongChordModeProps) {
   return (
     <section className="workspace" aria-labelledby="song-mode-title">
       <div className="workspace__intro">
@@ -26,13 +30,12 @@ export function SongChordMode() {
         <h2 id="song-mode-title">一次整理整首歌的和弦</h2>
         <p>用空格、逗號或換行輸入；主和弦由上而下排列，右側提供可替換的相關和弦。</p>
       </div>
-
       <div className="search-panel">
         <label htmlFor="song-chords">歌曲和弦</label>
         <textarea
           id="song-chords"
           value={input}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setInput(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onInputChange(event.target.value)}
           rows={4}
           placeholder="C G Am F"
         />
@@ -41,24 +44,28 @@ export function SongChordMode() {
             <input
               type="checkbox"
               checked={removeDuplicates}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setRemoveDuplicates(event.target.checked)}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                onRemoveDuplicatesChange(event.target.checked)
+              }
             />
             移除重複和弦
           </label>
           <span>{symbols.length} 個和弦</span>
         </div>
       </div>
-
       {symbols.length > 0 ? (
         <div className="song-list">
           {symbols.map((symbol, index) => {
             const related = getRelatedChords(symbol);
-
             return (
               <article className="song-row" key={`${symbol}-${index}`}>
                 <div className="song-row__main">
                   <span className="song-row__number">{index + 1}</span>
-                  <ChordCard symbol={symbol} />
+                  <ChordCard
+                    symbol={symbol}
+                    selectedShapeId={selectedShapeIds[index]}
+                    onShapeChange={(shapeId) => onShapeChange(index, shapeId)}
+                  />
                 </div>
                 <div className="song-row__related">
                   <div className="related-heading">
@@ -75,7 +82,7 @@ export function SongChordMode() {
                           key={relatedSymbol}
                           symbol={relatedSymbol}
                           compact
-                          onSelect={(newSymbol) => replaceChord(index, newSymbol)}
+                          onSelect={(newSymbol) => onReplaceChord(index, newSymbol)}
                         />
                       ))}
                     </div>

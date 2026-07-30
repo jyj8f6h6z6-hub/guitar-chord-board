@@ -1,12 +1,48 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
+import { SongChordOverview } from "./components/search/SongChordOverview";
+import { parseChordInput, uniqueChordSymbols } from "./services/chordParser";
 import type { AppMode } from "./types/chord";
+import "./mode3.css";
 
 const REPOSITORY_URL = "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
 
 function App() {
   const [mode, setMode] = useState<AppMode>("single");
+  const [songInput, setSongInput] = useState("C G Am F");
+  const [removeDuplicates, setRemoveDuplicates] = useState(false);
+  const [songShapeIds, setSongShapeIds] = useState<Record<number, string>>({});
+
+  const songSymbols = useMemo(() => {
+    const parsed = parseChordInput(songInput);
+    return removeDuplicates ? uniqueChordSymbols(parsed) : parsed;
+  }, [songInput, removeDuplicates]);
+
+  function updateSongInput(value: string) {
+    setSongInput(value);
+    setSongShapeIds({});
+  }
+
+  function updateRemoveDuplicates(value: boolean) {
+    setRemoveDuplicates(value);
+    setSongShapeIds({});
+  }
+
+  function replaceSongChord(index: number, newSymbol: string) {
+    const nextSymbols = [...songSymbols];
+    nextSymbols[index] = newSymbol;
+    setSongInput(nextSymbols.join(" "));
+    setSongShapeIds((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function selectSongShape(index: number, shapeId: string) {
+    setSongShapeIds((current) => ({ ...current, [index]: shapeId }));
+  }
 
   return (
     <div className="app-shell">
@@ -24,7 +60,6 @@ function App() {
           GitHub
         </a>
       </header>
-
       <main>
         <section className="hero">
           <div>
@@ -32,7 +67,6 @@ function App() {
             <h1>看懂和弦，立即開始彈。</h1>
           </div>
         </section>
-
         <nav className="mode-tabs" aria-label="選擇操作模式">
           <button
             type="button"
@@ -48,9 +82,31 @@ function App() {
           >
             歌曲和弦清單
           </button>
+          <button
+            type="button"
+            className={mode === "overview" ? "is-active" : ""}
+            onClick={() => setMode("overview")}
+          >
+            精簡總覽
+          </button>
         </nav>
 
-        {mode === "single" ? <SingleChordSearch /> : <SongChordMode />}
+        {mode === "single" && <SingleChordSearch />}
+        {mode === "song" && (
+          <SongChordMode
+            input={songInput}
+            onInputChange={updateSongInput}
+            removeDuplicates={removeDuplicates}
+            onRemoveDuplicatesChange={updateRemoveDuplicates}
+            symbols={songSymbols}
+            selectedShapeIds={songShapeIds}
+            onShapeChange={selectSongShape}
+            onReplaceChord={replaceSongChord}
+          />
+        )}
+        {mode === "overview" && (
+          <SongChordOverview symbols={songSymbols} selectedShapeIds={songShapeIds} />
+        )}
       </main>
 
       <footer>
