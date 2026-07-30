@@ -1,4 +1,7 @@
 const ROOT_ALIASES: Readonly<Record<string, string>> = {
+  Db: "C#",
+  "D#": "Eb",
+  "G#": "Ab",
   "A#": "Bb",
   Gb: "F#",
   "E#": "F",
@@ -10,8 +13,8 @@ const ROOT_ALIASES: Readonly<Record<string, string>> = {
 const ROOT_PATTERN = /^([A-G](?:#|b)?)(.*)$/;
 
 /**
- * 將常見同音異名解析到專案採用的指法名稱。
- * 例如 A# 使用 Bb 指法、Gb 使用 F# 指法。
+ * 將同音異名解析到專案採用的指法名稱。
+ * 例如 Db 使用 C# 指法、D# 使用 Eb 指法、A# 使用 Bb 指法。
  */
 export function resolveChordAlias(symbol: string): string {
   if (!symbol) {

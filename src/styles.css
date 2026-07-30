@@ -925,3 +925,136 @@ footer {
     scroll-margin-top: 8px;
   }
 }
+
+/* 0.2.2：單一和弦改為選單組合，加入和弦類型聽感描述 */
+select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 42px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #10121a;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+select:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.55);
+  outline-offset: 3px;
+}
+
+.chord-builder__controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.chord-select-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.chord-select-field > span {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.chord-select-field--type {
+  grid-column: 1 / -1;
+}
+
+.chord-builder__summary {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.chord-builder__selection,
+.chord-feeling {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(16, 18, 26, 0.72);
+}
+
+.chord-builder__selection {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 3px;
+}
+
+.chord-builder__selection > span,
+.chord-feeling > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chord-builder__selection strong {
+  justify-self: end;
+  color: var(--accent-strong);
+  font-size: 1.8rem;
+  letter-spacing: -0.035em;
+}
+
+.chord-builder__selection small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.chord-feeling p {
+  margin: 7px 0 0;
+  line-height: 1.65;
+}
+
+.chord-builder__submit {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.chord-builder__note {
+  margin: 11px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .chord-builder__controls {
+    gap: 10px;
+  }
+
+  .chord-select-field > span {
+    font-size: 0.76rem;
+  }
+
+  select {
+    min-height: 48px;
+    padding-inline: 12px 34px;
+    font-size: 0.88rem;
+  }
+
+  .workspace--single .chord-builder__submit {
+    width: 100%;
+    padding-inline: 15px;
+  }
+
+  .chord-builder__note {
+    font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .chord-builder__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-select-field--type {
+    grid-column: auto;
+  }
+}

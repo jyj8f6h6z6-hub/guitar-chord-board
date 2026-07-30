@@ -1,7 +1,8 @@
 import type { ChordShape } from "../types/chord";
+import { createGeneratedChordShapes } from "./generatedChordShapes";
 import { resolveChordAlias } from "../utils/chordAliases";
 
-export const CHORD_SHAPES: readonly ChordShape[] = [
+const HAND_AUTHORED_CHORD_SHAPES: readonly ChordShape[] = [
   {
     id: "c-major-open",
     symbol: "C",
@@ -865,6 +866,15 @@ export const CHORD_SHAPES: readonly ChordShape[] = [
     variantLabel: "開放位",
     tags: ["open", "sixth"],
   }
+];
+
+const HAND_AUTHORED_SYMBOLS = new Set(
+  HAND_AUTHORED_CHORD_SHAPES.map((shape) => shape.symbol),
+);
+
+export const CHORD_SHAPES: readonly ChordShape[] = [
+  ...HAND_AUTHORED_CHORD_SHAPES,
+  ...createGeneratedChordShapes(HAND_AUTHORED_SYMBOLS),
 ];
 
 const SHAPES_BY_SYMBOL = new Map<string, ChordShape[]>();
