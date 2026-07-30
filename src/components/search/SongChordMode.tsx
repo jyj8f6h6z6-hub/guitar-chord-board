@@ -1,6 +1,6 @@
 import type { ChangeEvent } from "react";
 import { ChordCard } from "../chord/ChordCard";
-import { getRelatedChords } from "../../services/relatedChords";
+import { CHORD_TYPE_OPTIONS } from "../../data/chordTypes";
 
 interface SongChordModeProps {
   input: string;
@@ -11,6 +11,13 @@ interface SongChordModeProps {
   selectedShapeIds: Readonly<Record<number, string>>;
   onShapeChange: (index: number, shapeId: string) => void;
   onReplaceChord: (index: number, newSymbol: string) => void;
+}
+
+const CHORD_ROOT_PATTERN = /^([A-G])([#b]?)/;
+
+function getChordRoot(symbol: string): string | null {
+  const match = symbol.match(CHORD_ROOT_PATTERN);
+  return match ? `${match[1]}${match[2]}` : null;
 }
 
 export function SongChordMode({
@@ -28,8 +35,11 @@ export function SongChordMode({
       <div className="workspace__intro">
         <p className="eyebrow">模式二</p>
         <h2 id="song-mode-title">一次整理整首歌的和弦</h2>
-        <p>用空格、逗號或換行輸入；主和弦由上而下排列，右側提供可替換的相關和弦。</p>
+        <p>
+          用空格、逗號或換行輸入；每一列右側會列出與模式一相同的 12 種和弦類型，點選後立即替換左側主和弦。
+        </p>
       </div>
+
       <div className="search-panel">
         <label htmlFor="song-chords">歌曲和弦</label>
         <textarea
@@ -53,10 +63,12 @@ export function SongChordMode({
           <span>{symbols.length} 個和弦</span>
         </div>
       </div>
+
       {symbols.length > 0 ? (
         <div className="song-list">
           {symbols.map((symbol, index) => {
-            const related = getRelatedChords(symbol);
+            const root = getChordRoot(symbol);
+
             return (
               <article className="song-row" key={`${symbol}-${index}`}>
                 <div className="song-row__main">
@@ -67,27 +79,39 @@ export function SongChordMode({
                     onShapeChange={(shapeId) => onShapeChange(index, shapeId)}
                   />
                 </div>
+
                 <div className="song-row__related">
                   <div className="related-heading">
                     <div>
-                      <p className="eyebrow">變化與轉位</p>
-                      <h3>{symbol} 的相關和弦</h3>
+                      <p className="eyebrow">12 種和弦類型</p>
+                      <h3>{root ? `${root} 的全部和弦類型` : `${symbol} 的和弦類型`}</h3>
                     </div>
-                    <span>點選即可替換本列</span>
+                    <span>點選後立即替換左側主和弦</span>
                   </div>
-                  {related.length > 0 ? (
-                    <div className="related-scroll">
-                      {related.map((relatedSymbol) => (
-                        <ChordCard
-                          key={relatedSymbol}
-                          symbol={relatedSymbol}
-                          compact
-                          onSelect={(newSymbol) => onReplaceChord(index, newSymbol)}
-                        />
-                      ))}
+
+                  {root ? (
+                    <div className="chord-type-grid">
+                      {CHORD_TYPE_OPTIONS.map((option) => {
+                        const candidateSymbol = `${root}${option.suffix}`;
+                        const isCurrent = candidateSymbol === symbol;
+
+                        return (
+                          <div
+                            className={`chord-type-option${isCurrent ? " is-current" : ""}`}
+                            key={option.suffix || "major"}
+                          >
+                            <ChordCard
+                              symbol={candidateSymbol}
+                              compact
+                              eyebrow={option.label}
+                              onSelect={(newSymbol) => onReplaceChord(index, newSymbol)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="notice">目前沒有已收錄的相關按法。</div>
+                    <div className="notice">無法判斷這個和弦的根音，因此暫時不能建立類型選單。</div>
                   )}
                 </div>
               </article>

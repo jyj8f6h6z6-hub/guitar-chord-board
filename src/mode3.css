@@ -125,3 +125,62 @@
     font-size: 0.66rem;
   }
 }
+
+/* 模式二：每一列顯示與模式一相同的 12 種和弦類型 */
+.chord-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.chord-type-option {
+  min-width: 0;
+}
+
+.chord-type-option .chord-card--compact {
+  min-width: 0;
+  height: 100%;
+}
+
+.chord-type-option.is-current .chord-card {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(233, 185, 73, 0.28);
+}
+
+.chord-type-option.is-current .eyebrow,
+.chord-type-option.is-current h3 {
+  color: var(--accent-strong);
+}
+
+@media (max-width: 900px) {
+  .chord-type-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  }
+
+  .chord-type-grid .chord-card--compact {
+    flex: initial;
+    scroll-snap-align: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .chord-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .chord-type-grid .chord-card--compact {
+    padding: 10px;
+    border-radius: 15px;
+  }
+
+  .chord-type-grid .chord-card--compact h3 {
+    font-size: 1.15rem;
+  }
+
+  .chord-type-grid .chord-card--compact .eyebrow {
+    font-size: 0.52rem;
+    line-height: 1.35;
+  }
+}
