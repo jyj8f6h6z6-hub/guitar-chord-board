@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
-import { CHORD_SHAPE_COUNT, CHORD_SYMBOL_COUNT } from "./data/chordShapes";
 import type { AppMode } from "./types/chord";
 
 const REPOSITORY_URL = "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
@@ -31,23 +30,6 @@ function App() {
           <div>
             <p className="eyebrow">PLAY · LEARN · ARRANGE</p>
             <h1>看懂和弦，立即開始彈。</h1>
-            <p className="hero__copy">
-              查詢單一和弦，或一次排好整首歌曲的所有按法；每張圖都附上組成音與實用變化。
-            </p>
-          </div>
-          <div className="hero__stats" aria-label="專案目前收錄資訊">
-            <div>
-              <strong>{CHORD_SHAPE_COUNT}</strong>
-              <span>吉他按法</span>
-            </div>
-            <div>
-              <strong>{CHORD_SYMBOL_COUNT}</strong>
-              <span>和弦名稱</span>
-            </div>
-            <div>
-              <strong>2+</strong>
-              <span>常用和弦把位</span>
-            </div>
           </div>
         </section>
 

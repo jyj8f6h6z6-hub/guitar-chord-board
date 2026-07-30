@@ -798,3 +798,130 @@ footer {
     padding: 12px;
   }
 }
+
+/* 0.2.1：單一和弦快速查詢，讓輸入框與結果優先出現在畫面上方 */
+.hero {
+  display: block;
+  padding: 24px 0 18px;
+}
+
+.hero h1 {
+  max-width: none;
+  font-size: clamp(1.55rem, 3.6vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+.workspace--single {
+  padding: 20px 0 72px;
+}
+
+.single-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(360px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.single-search-column,
+.single-result-region {
+  min-width: 0;
+}
+
+.workspace--single .workspace__intro {
+  margin-bottom: 12px;
+}
+
+.workspace--single .workspace__intro h2 {
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+}
+
+.workspace--single .search-panel {
+  padding: 18px;
+}
+
+.workspace--single .single-result {
+  max-width: 420px;
+  margin-top: 0;
+}
+
+.workspace--single .notice--error {
+  margin-top: 0;
+}
+
+.single-result-region {
+  scroll-margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .single-workspace-grid {
+    grid-template-columns: minmax(250px, 0.7fr) minmax(330px, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .site-header {
+    min-height: 68px;
+  }
+
+  .hero {
+    padding: 16px 0 14px;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.62rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.35rem, 7vw, 2rem);
+    line-height: 1.12;
+  }
+
+  .workspace--single {
+    padding-top: 14px;
+  }
+
+  .single-workspace-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .workspace--single .workspace__intro {
+    margin-bottom: 9px;
+  }
+
+  .workspace--single .workspace__intro h2 {
+    font-size: 1.35rem;
+  }
+
+  .workspace--single .search-panel {
+    padding: 14px;
+  }
+
+  .workspace--single .search-row {
+    flex-direction: row;
+  }
+
+  .workspace--single .search-row input {
+    min-width: 0;
+  }
+
+  .workspace--single .primary-button {
+    width: auto;
+    padding-inline: 15px;
+  }
+
+  .workspace--single .input-help {
+    display: none;
+  }
+
+  .workspace--single .single-result {
+    margin-top: 0;
+  }
+
+  .single-result-region {
+    scroll-margin-top: 8px;
+  }
+}
