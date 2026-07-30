@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
-import { ChordCard } from "../chord/ChordCard";
 import { CHORD_TYPE_OPTIONS } from "../../data/chordTypes";
+import { ChordCard } from "../chord/ChordCard";
+import { ScoreImportPanel } from "../score/ScoreImportPanel";
 
 interface SongChordModeProps {
   input: string;
@@ -36,9 +37,11 @@ export function SongChordMode({
         <p className="eyebrow">模式二</p>
         <h2 id="song-mode-title">一次整理整首歌的和弦</h2>
         <p>
-          用空格、逗號或換行輸入；每一列右側會列出與模式一相同的 12 種和弦類型，點選後立即替換左側主和弦。
+          可手動輸入，也可拍照或上傳歌譜辨識已印出的和弦；每一列右側會列出與模式一相同的 12 種和弦類型。
         </p>
       </div>
+
+      <ScoreImportPanel currentInput={input} onInputChange={onInputChange} />
 
       <div className="search-panel">
         <label htmlFor="song-chords">歌曲和弦</label>
@@ -68,7 +71,6 @@ export function SongChordMode({
         <div className="song-list">
           {symbols.map((symbol, index) => {
             const root = getChordRoot(symbol);
-
             return (
               <article className="song-row" key={`${symbol}-${index}`}>
                 <div className="song-row__main">
@@ -79,7 +81,6 @@ export function SongChordMode({
                     onShapeChange={(shapeId) => onShapeChange(index, shapeId)}
                   />
                 </div>
-
                 <div className="song-row__related">
                   <div className="related-heading">
                     <div>
@@ -88,13 +89,11 @@ export function SongChordMode({
                     </div>
                     <span>點選後立即替換左側主和弦</span>
                   </div>
-
                   {root ? (
                     <div className="chord-type-grid">
                       {CHORD_TYPE_OPTIONS.map((option) => {
                         const candidateSymbol = `${root}${option.suffix}`;
                         const isCurrent = candidateSymbol === symbol;
-
                         return (
                           <div
                             className={`chord-type-option${isCurrent ? " is-current" : ""}`}

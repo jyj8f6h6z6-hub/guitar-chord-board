@@ -3,9 +3,11 @@ import packageJson from "../package.json";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
-import "./mode3.css";
+import { ScoreStudio } from "./components/score/ScoreStudio";
 import { parseChordInput, uniqueChordSymbols } from "./services/chordParser";
 import type { AppMode } from "./types/chord";
+import "./mode3.css";
+import "./score.css";
 
 const REPOSITORY_URL = "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
 
@@ -45,6 +47,12 @@ function App() {
     setSongShapeIds((current) => ({ ...current, [index]: shapeId }));
   }
 
+  function applyScoreChords(symbols: string[]) {
+    setSongInput(symbols.join(" "));
+    setSongShapeIds({});
+    setMode("song");
+  }
+
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -61,6 +69,7 @@ function App() {
           GitHub
         </a>
       </header>
+
       <main>
         <section className="hero">
           <div>
@@ -68,6 +77,7 @@ function App() {
             <h1>看懂和弦，立即開始彈。</h1>
           </div>
         </section>
+
         <nav className="mode-tabs" aria-label="選擇操作模式">
           <button
             type="button"
@@ -90,6 +100,13 @@ function App() {
           >
             精簡總覽
           </button>
+          <button
+            type="button"
+            className={mode === "score" ? "is-active" : ""}
+            onClick={() => setMode("score")}
+          >
+            智慧歌譜
+          </button>
         </nav>
 
         {mode === "single" && <SingleChordSearch />}
@@ -108,11 +125,12 @@ function App() {
         {mode === "overview" && (
           <SongChordOverview symbols={songSymbols} selectedShapeIds={songShapeIds} />
         )}
+        {mode === "score" && <ScoreStudio onApplyToSong={applyScoreChords} />}
       </main>
 
       <footer>
         <span>Guitar Chord Board · {packageJson.version}</span>
-        <span>React + TypeScript + Tonal + SVG</span>
+        <span>React + TypeScript + Tonal + OCR + PDF</span>
       </footer>
     </div>
   );
