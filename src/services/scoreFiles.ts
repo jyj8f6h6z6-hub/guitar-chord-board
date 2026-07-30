@@ -71,6 +71,7 @@ async function loadPdfFile(file: File, startingPageNumber: number): Promise<Scor
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     await pdfPage.render({
+      canvas,
       canvasContext: context,
       viewport,
     }).promise;
