@@ -19,7 +19,20 @@ interface TsvWord {
   text: string;
 }
 
-type RecognitionPass = "original" | "color";
+interface ColorComponent {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  area: number;
+}
+
+interface ColorChordRegion {
+  dataUrl: string;
+  bbox: ScoreBoundingBox;
+}
+
+type RecognitionPass = "original" | "color-region";
 
 interface ScoreChordCandidate extends ScoreChordMark {
   recognitionPass: RecognitionPass;
@@ -29,20 +42,30 @@ const MIN_CANDIDATE_CONFIDENCE = 20;
 const MIN_REPEATED_CONFIDENCE = 35;
 const MIN_UNIQUE_COMPLEX_CONFIDENCE = 45;
 const MIN_UNIQUE_SIMPLE_CONFIDENCE = 64;
-const MIN_COLOR_CONFIDENCE = 18;
+const MIN_COLOR_REGION_CONFIDENCE = 0;
 const MAX_JOINED_WORDS = 3;
-const MIN_COLOR_PIXEL_COUNT = 20;
 
-const SUPPORTED_SUFFIXES = new Set(
+const MAX_ANALYSIS_DIMENSION = 2200;
+const MAX_COLOR_COMPONENTS = 1800;
+const MAX_COLOR_REGIONS = 120;
+const MIN_COLOR_PIXEL_COUNT = 16;
+const REGION_TARGET_HEIGHT = 180;
+
+const SUPPORTED_SUFFIXES = new Set<string>(
   CHORD_TYPE_OPTIONS.map((option) => option.suffix),
 );
 
 const CHORD_CHARACTER_WHITELIST =
   "ABCDEFGabcdefg#bMmmajinsud24579/";
+const ROOT_CHARACTER_WHITELIST = "ABCDEFG";
 
 function createId(prefix: string): string {
   const randomPart = Math.random().toString(36).slice(2, 9);
   return `${prefix}-${Date.now()}-${randomPart}`;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function cleanOcrToken(value: string): string {
@@ -76,7 +99,12 @@ function normalizeRecognizedSuffix(rawSuffix: string): string | null {
     return "";
   }
 
-  if (lowerSuffix === "min" || lowerSuffix === "minor") {
+  if (
+    lowerSuffix === "min" ||
+    lowerSuffix === "minor" ||
+    lowerSuffix === "in" ||
+    lowerSuffix === "rn"
+  ) {
     return "m";
   }
 
@@ -245,8 +273,7 @@ function wordsAreClose(words: readonly TsvWord[]): boolean {
   for (let index = 1; index < words.length; index += 1) {
     const previous = words[index - 1];
     const current = words[index];
-    const gap =
-      current.left - (previous.left + previous.width);
+    const gap = current.left - (previous.left + previous.width);
     const allowedGap = Math.max(
       18,
       Math.max(previous.height, current.height) * 0.9,
@@ -263,7 +290,6 @@ function wordsAreClose(words: readonly TsvWord[]): boolean {
 function extractCandidatesFromWords(
   words: readonly TsvWord[],
   pageIndex: number,
-  recognitionPass: RecognitionPass,
 ): ScoreChordCandidate[] {
   const lineGroups = new Map<string, TsvWord[]>();
 
@@ -337,7 +363,7 @@ function extractCandidatesFromWords(
           symbol: acceptedSymbol,
           confidence,
           bbox: combineBoundingBoxes(acceptedWords),
-          recognitionPass,
+          recognitionPass: "original",
         });
       }
 
@@ -352,6 +378,10 @@ function isSimpleMajorChord(symbol: string): boolean {
   return /^[A-G](?:#|b)?$/.test(symbol);
 }
 
+function getRoot(symbol: string): string {
+  return symbol.match(/^[A-G](?:#|b)?/)?.[0] ?? symbol;
+}
+
 function boxesOverlap(
   left: ScoreBoundingBox,
   right: ScoreBoundingBox,
@@ -363,11 +393,11 @@ function boxesOverlap(
 
   const allowedX = Math.max(
     20,
-    Math.max(left.width, right.width) * 1.2,
+    Math.max(left.width, right.width) * 1.35,
   );
   const allowedY = Math.max(
     14,
-    Math.max(left.height, right.height) * 1.2,
+    Math.max(left.height, right.height) * 1.35,
   );
 
   return (
@@ -376,34 +406,43 @@ function boxesOverlap(
   );
 }
 
-function removeDuplicateCandidates(
+function candidatePriority(candidate: ScoreChordCandidate): number {
+  const passBonus = candidate.recognitionPass === "color-region" ? 12 : 0;
+  const complexBonus =
+    candidate.symbol.length > getRoot(candidate.symbol).length ? 52 : 0;
+  return candidate.confidence + passBonus + complexBonus;
+}
+
+function resolveOverlappingCandidates(
   candidates: readonly ScoreChordCandidate[],
 ): ScoreChordCandidate[] {
-  const sorted = [...candidates].sort((left, right) => {
-    if (left.recognitionPass !== right.recognitionPass) {
-      return left.recognitionPass === "color" ? -1 : 1;
-    }
-
-    return right.confidence - left.confidence;
-  });
-
+  const sorted = [...candidates].sort(
+    (left, right) => candidatePriority(right) - candidatePriority(left),
+  );
   const accepted: ScoreChordCandidate[] = [];
 
   for (const candidate of sorted) {
-    const duplicateIndex = accepted.findIndex(
+    const competingIndex = accepted.findIndex(
       (current) =>
         current.pageIndex === candidate.pageIndex &&
-        current.symbol === candidate.symbol &&
         boxesOverlap(current.bbox, candidate.bbox),
     );
 
-    if (duplicateIndex < 0) {
+    if (competingIndex < 0) {
       accepted.push(candidate);
       continue;
     }
 
-    if (candidate.confidence > accepted[duplicateIndex].confidence) {
-      accepted[duplicateIndex] = candidate;
+    const current = accepted[competingIndex];
+    const sameSymbol = current.symbol === candidate.symbol;
+    const sameRoot = getRoot(current.symbol) === getRoot(candidate.symbol);
+
+    if (!sameSymbol && !sameRoot) {
+      continue;
+    }
+
+    if (candidatePriority(candidate) > candidatePriority(current)) {
+      accepted[competingIndex] = candidate;
     }
   }
 
@@ -413,20 +452,20 @@ function removeDuplicateCandidates(
 function filterLikelyChordMarks(
   candidates: readonly ScoreChordCandidate[],
 ): ScoreChordMark[] {
-  const deduplicated = removeDuplicateCandidates(candidates);
+  const resolved = resolveOverlappingCandidates(candidates);
   const symbolCounts = new Map<string, number>();
 
-  for (const candidate of deduplicated) {
+  for (const candidate of resolved) {
     symbolCounts.set(
       candidate.symbol,
       (symbolCounts.get(candidate.symbol) ?? 0) + 1,
     );
   }
 
-  return deduplicated
+  return resolved
     .filter((candidate) => {
-      if (candidate.recognitionPass === "color") {
-        return candidate.confidence >= MIN_COLOR_CONFIDENCE;
+      if (candidate.recognitionPass === "color-region") {
+        return candidate.confidence >= MIN_COLOR_REGION_CONFIDENCE;
       }
 
       const count = symbolCounts.get(candidate.symbol) ?? 0;
@@ -460,109 +499,419 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
 
     image.onload = () => resolve(image);
     image.onerror = () =>
-      reject(new Error("無法載入歌譜圖片進行彩色和弦辨識。"));
+      reject(new Error("無法載入歌譜圖片進行專用和弦辨識。"));
     image.src = dataUrl;
   });
 }
 
-async function createColorChordMask(
-  dataUrl: string,
-): Promise<string | null> {
-  const image = await loadImage(dataUrl);
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
+function isColoredPixel(red: number, green: number, blue: number): boolean {
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const chroma = maximum - minimum;
+  const saturation = maximum === 0 ? 0 : chroma / maximum;
 
-  const context = canvas.getContext("2d", {
+  return (
+    chroma >= 28 &&
+    saturation >= 0.18 &&
+    maximum <= 252 &&
+    minimum <= 232
+  );
+}
+
+function findColorComponents(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+): ColorComponent[] {
+  const components: ColorComponent[] = [];
+  const stack: number[] = [];
+
+  for (let startIndex = 0; startIndex < binary.length; startIndex += 1) {
+    if (binary[startIndex] === 0) {
+      continue;
+    }
+
+    binary[startIndex] = 0;
+    stack.push(startIndex);
+
+    let minimumX = width;
+    let maximumX = 0;
+    let minimumY = height;
+    let maximumY = 0;
+    let area = 0;
+
+    while (stack.length > 0) {
+      const currentIndex = stack.pop();
+      if (currentIndex === undefined) {
+        break;
+      }
+
+      const x = currentIndex % width;
+      const y = Math.floor(currentIndex / width);
+      minimumX = Math.min(minimumX, x);
+      maximumX = Math.max(maximumX, x);
+      minimumY = Math.min(minimumY, y);
+      maximumY = Math.max(maximumY, y);
+      area += 1;
+
+      const left = currentIndex - 1;
+      const right = currentIndex + 1;
+      const above = currentIndex - width;
+      const below = currentIndex + width;
+
+      if (x > 0 && binary[left] === 1) {
+        binary[left] = 0;
+        stack.push(left);
+      }
+      if (x + 1 < width && binary[right] === 1) {
+        binary[right] = 0;
+        stack.push(right);
+      }
+      if (y > 0 && binary[above] === 1) {
+        binary[above] = 0;
+        stack.push(above);
+      }
+      if (y + 1 < height && binary[below] === 1) {
+        binary[below] = 0;
+        stack.push(below);
+      }
+    }
+
+    const componentWidth = maximumX - minimumX + 1;
+    const componentHeight = maximumY - minimumY + 1;
+
+    if (
+      area >= 3 &&
+      componentWidth >= 2 &&
+      componentHeight >= 3 &&
+      componentWidth <= width * 0.15 &&
+      componentHeight <= height * 0.12
+    ) {
+      components.push({
+        x: minimumX,
+        y: minimumY,
+        width: componentWidth,
+        height: componentHeight,
+        area,
+      });
+    }
+
+    if (components.length > MAX_COLOR_COMPONENTS) {
+      return [];
+    }
+  }
+
+  return components;
+}
+
+function verticalOverlapRatio(
+  left: ColorComponent,
+  right: ColorComponent,
+): number {
+  const overlap = Math.max(
+    0,
+    Math.min(left.y + left.height, right.y + right.height) -
+      Math.max(left.y, right.y),
+  );
+  return overlap / Math.max(1, Math.min(left.height, right.height));
+}
+
+function mergeComponents(
+  components: readonly ColorComponent[],
+): ColorComponent[] {
+  const sorted = [...components].sort((left, right) => {
+    const rowDistance = left.y - right.y;
+    return Math.abs(rowDistance) > 4 ? rowDistance : left.x - right.x;
+  });
+  const groups: ColorComponent[] = [];
+
+  for (const component of sorted) {
+    const matchingIndex = groups.findIndex((group) => {
+      const horizontalGap = Math.max(
+        0,
+        component.x - (group.x + group.width),
+        group.x - (component.x + component.width),
+      );
+      const allowedGap = Math.max(
+        5,
+        Math.max(group.height, component.height) * 0.85,
+      );
+
+      return (
+        verticalOverlapRatio(group, component) >= 0.42 &&
+        horizontalGap <= allowedGap
+      );
+    });
+
+    if (matchingIndex < 0) {
+      groups.push({ ...component });
+      continue;
+    }
+
+    const group = groups[matchingIndex];
+    const right = Math.max(
+      group.x + group.width,
+      component.x + component.width,
+    );
+    const bottom = Math.max(
+      group.y + group.height,
+      component.y + component.height,
+    );
+    group.x = Math.min(group.x, component.x);
+    group.y = Math.min(group.y, component.y);
+    group.width = right - group.x;
+    group.height = bottom - group.y;
+    group.area += component.area;
+  }
+
+  return groups.filter((group) => {
+    const fillRatio = group.area / Math.max(1, group.width * group.height);
+    return (
+      group.area >= 8 &&
+      group.height >= 6 &&
+      group.width <= group.height * 7.5 &&
+      fillRatio >= 0.035
+    );
+  });
+}
+
+function createRegionCanvas(
+  sourceCanvas: HTMLCanvasElement,
+  bbox: ScoreBoundingBox,
+): string {
+  const padding = Math.max(5, Math.round(bbox.height * 0.55));
+  const sourceX = clamp(Math.floor(bbox.x - padding), 0, sourceCanvas.width - 1);
+  const sourceY = clamp(Math.floor(bbox.y - padding), 0, sourceCanvas.height - 1);
+  const sourceRight = clamp(
+    Math.ceil(bbox.x + bbox.width + padding),
+    sourceX + 1,
+    sourceCanvas.width,
+  );
+  const sourceBottom = clamp(
+    Math.ceil(bbox.y + bbox.height + padding),
+    sourceY + 1,
+    sourceCanvas.height,
+  );
+  const sourceWidth = sourceRight - sourceX;
+  const sourceHeight = sourceBottom - sourceY;
+  const scale = clamp(REGION_TARGET_HEIGHT / sourceHeight, 4, 14);
+
+  const output = document.createElement("canvas");
+  output.width = Math.max(1, Math.round(sourceWidth * scale) + 40);
+  output.height = Math.max(1, Math.round(sourceHeight * scale) + 40);
+  const context = output.getContext("2d");
+
+  if (!context) {
+    throw new Error("瀏覽器無法建立和弦文字放大畫布。");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, output.width, output.height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(
+    sourceCanvas,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    20,
+    20,
+    Math.round(sourceWidth * scale),
+    Math.round(sourceHeight * scale),
+  );
+
+  return output.toDataURL("image/png");
+}
+
+async function createColorChordRegions(
+  dataUrl: string,
+): Promise<ColorChordRegion[]> {
+  const image = await loadImage(dataUrl);
+  const originalWidth = image.naturalWidth || image.width;
+  const originalHeight = image.naturalHeight || image.height;
+  const analysisScale = Math.min(
+    1,
+    MAX_ANALYSIS_DIMENSION / Math.max(originalWidth, originalHeight),
+  );
+  const analysisWidth = Math.max(1, Math.round(originalWidth * analysisScale));
+  const analysisHeight = Math.max(1, Math.round(originalHeight * analysisScale));
+
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = originalWidth;
+  sourceCanvas.height = originalHeight;
+  const sourceContext = sourceCanvas.getContext("2d");
+
+  const analysisCanvas = document.createElement("canvas");
+  analysisCanvas.width = analysisWidth;
+  analysisCanvas.height = analysisHeight;
+  const analysisContext = analysisCanvas.getContext("2d", {
     willReadFrequently: true,
   });
 
-  if (!context) {
-    throw new Error("瀏覽器無法建立彩色和弦辨識畫布。");
+  if (!sourceContext || !analysisContext) {
+    throw new Error("瀏覽器無法建立專用和弦辨識畫布。");
   }
 
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  sourceContext.drawImage(image, 0, 0, originalWidth, originalHeight);
+  analysisContext.drawImage(image, 0, 0, analysisWidth, analysisHeight);
 
-  const source = context.getImageData(
+  const imageData = analysisContext.getImageData(
     0,
     0,
-    canvas.width,
-    canvas.height,
+    analysisWidth,
+    analysisHeight,
   );
-  const binary = new Uint8Array(canvas.width * canvas.height);
+  const binary = new Uint8Array(analysisWidth * analysisHeight);
   let colorPixelCount = 0;
 
   for (let index = 0; index < binary.length; index += 1) {
     const offset = index * 4;
-    const red = source.data[offset];
-    const green = source.data[offset + 1];
-    const blue = source.data[offset + 2];
-
-    const maximum = Math.max(red, green, blue);
-    const minimum = Math.min(red, green, blue);
-    const chroma = maximum - minimum;
-    const saturation = maximum === 0 ? 0 : chroma / maximum;
-
-    const isColoredText =
-      chroma >= 34 &&
-      saturation >= 0.22 &&
-      maximum <= 250 &&
-      minimum <= 225;
-
-    if (isColoredText) {
+    if (
+      isColoredPixel(
+        imageData.data[offset],
+        imageData.data[offset + 1],
+        imageData.data[offset + 2],
+      )
+    ) {
       binary[index] = 1;
       colorPixelCount += 1;
     }
   }
 
   if (colorPixelCount < MIN_COLOR_PIXEL_COUNT) {
-    return null;
+    return [];
   }
 
-  const output = context.createImageData(
-    canvas.width,
-    canvas.height,
+  const components = findColorComponents(
+    binary,
+    analysisWidth,
+    analysisHeight,
   );
+  const groups = mergeComponents(components).slice(0, MAX_COLOR_REGIONS);
+  const inverseScale = 1 / analysisScale;
 
-  for (let y = 0; y < canvas.height; y += 1) {
-    for (let x = 0; x < canvas.width; x += 1) {
-      let isTextPixel = false;
+  return groups.map((group) => {
+    const bbox: ScoreBoundingBox = {
+      x: group.x * inverseScale,
+      y: group.y * inverseScale,
+      width: group.width * inverseScale,
+      height: group.height * inverseScale,
+    };
 
-      for (
-        let offsetY = -1;
-        offsetY <= 1 && !isTextPixel;
-        offsetY += 1
-      ) {
-        const neighborY = y + offsetY;
-        if (neighborY < 0 || neighborY >= canvas.height) {
-          continue;
-        }
+    return {
+      bbox,
+      dataUrl: createRegionCanvas(sourceCanvas, bbox),
+    };
+  });
+}
 
-        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
-          const neighborX = x + offsetX;
-          if (neighborX < 0 || neighborX >= canvas.width) {
-            continue;
-          }
-
-          if (binary[neighborY * canvas.width + neighborX] === 1) {
-            isTextPixel = true;
-            break;
-          }
-        }
-      }
-
-      const outputOffset = (y * canvas.width + x) * 4;
-      const value = isTextPixel ? 0 : 255;
-
-      output.data[outputOffset] = value;
-      output.data[outputOffset + 1] = value;
-      output.data[outputOffset + 2] = value;
-      output.data[outputOffset + 3] = 255;
+function getRecognitionConfidence(result: unknown): number {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "data" in result
+  ) {
+    const data = (result as { data?: { confidence?: unknown } }).data;
+    if (typeof data?.confidence === "number") {
+      return data.confidence;
     }
   }
 
-  context.putImageData(output, 0, 0);
-  return canvas.toDataURL("image/png");
+  return 0;
+}
+
+function getRecognitionText(result: unknown): string {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "data" in result
+  ) {
+    const data = (result as { data?: { text?: unknown } }).data;
+    if (typeof data?.text === "string") {
+      return data.text;
+    }
+  }
+
+  return "";
+}
+
+async function recognizeColorRegions(
+  worker: Awaited<ReturnType<typeof createWorker>>,
+  regions: readonly ColorChordRegion[],
+  pageIndex: number,
+  onRegionProgress?: (completed: number, total: number) => void,
+): Promise<ScoreChordCandidate[]> {
+  const candidates: ScoreChordCandidate[] = [];
+  const wideRegions = regions.filter(
+    (region) => region.bbox.width / Math.max(1, region.bbox.height) >= 1.35,
+  );
+  const totalSteps = regions.length + wideRegions.length;
+  let completedSteps = 0;
+
+  await worker.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_CHAR,
+    preserve_interword_spaces: "1",
+    user_defined_dpi: "300",
+    tessedit_char_whitelist: ROOT_CHARACTER_WHITELIST,
+  });
+
+  for (const region of regions) {
+    const result = await worker.recognize(region.dataUrl);
+    const rawText = getRecognitionText(result);
+    const symbol = normalizeRecognizedChord(rawText);
+
+    if (symbol && isSimpleMajorChord(symbol)) {
+      candidates.push({
+        id: createId("color-root"),
+        pageIndex,
+        sourceText: rawText.trim(),
+        sourceSymbol: symbol,
+        symbol,
+        confidence: getRecognitionConfidence(result),
+        bbox: region.bbox,
+        recognitionPass: "color-region",
+      });
+    }
+
+    completedSteps += 1;
+    onRegionProgress?.(completedSteps, totalSteps);
+  }
+
+  if (wideRegions.length === 0) {
+    return candidates;
+  }
+
+  await worker.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_CHAR,
+    preserve_interword_spaces: "1",
+    user_defined_dpi: "300",
+    tessedit_char_whitelist: CHORD_CHARACTER_WHITELIST,
+  });
+
+  for (const region of wideRegions) {
+    const result = await worker.recognize(region.dataUrl);
+    const rawText = getRecognitionText(result);
+    const symbol = normalizeRecognizedChord(rawText);
+
+    if (symbol && !isSimpleMajorChord(symbol)) {
+      candidates.push({
+        id: createId("color-chord"),
+        pageIndex,
+        sourceText: rawText.trim(),
+        sourceSymbol: symbol,
+        symbol,
+        confidence: getRecognitionConfidence(result),
+        bbox: region.bbox,
+        recognitionPass: "color-region",
+      });
+    }
+
+    completedSteps += 1;
+    onRegionProgress?.(completedSteps, totalSteps);
+  }
+
+  return candidates;
 }
 
 export async function recognizeScoreChords(
@@ -602,8 +951,8 @@ export async function recognizeScoreChords(
 
     for (let index = 0; index < pages.length; index += 1) {
       currentPageIndex = index;
-
       currentPassLabel = "原圖";
+
       onProgress?.({
         pageIndex: index,
         pageCount: pages.length,
@@ -629,52 +978,40 @@ export async function recognizeScoreChords(
           : "";
 
       candidates.push(
-        ...extractCandidatesFromWords(
-          parseTsv(originalTsv),
-          index,
-          "original",
-        ),
+        ...extractCandidatesFromWords(parseTsv(originalTsv), index),
       );
 
-      const colorMask = await createColorChordMask(
-        pages[index].dataUrl,
-      );
-
-      if (!colorMask) {
-        continue;
-      }
-
-      currentPassLabel = "彩色和弦";
+      currentPassLabel = "尋找彩色和弦";
       onProgress?.({
         pageIndex: index,
         pageCount: pages.length,
-        status: `正在辨識第 ${index + 1} 頁彩色和弦`,
+        status: `正在找出第 ${index + 1} 頁的彩色和弦位置`,
         progress: 0,
       });
 
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.SPARSE_TEXT,
-        preserve_interword_spaces: "1",
-        user_defined_dpi: "300",
-        tessedit_char_whitelist: CHORD_CHARACTER_WHITELIST,
-      });
-
-      const colorResult = await worker.recognize(
-        colorMask,
-        {},
-        { tsv: true },
+      const regions = await createColorChordRegions(
+        pages[index].dataUrl,
       );
-      const colorTsv =
-        typeof colorResult.data.tsv === "string"
-          ? colorResult.data.tsv
-          : "";
 
+      if (regions.length === 0) {
+        continue;
+      }
+
+      currentPassLabel = "逐字放大辨識";
       candidates.push(
-        ...extractCandidatesFromWords(
-          parseTsv(colorTsv),
+        ...(await recognizeColorRegions(
+          worker,
+          regions,
           index,
-          "color",
-        ),
+          (completed, total) => {
+            onProgress?.({
+              pageIndex: index,
+              pageCount: pages.length,
+              status: `逐字放大辨識：${completed}/${total}`,
+              progress: total > 0 ? completed / total : 0,
+            });
+          },
+        )),
       );
     }
 
