@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
+import packageJson from "../package.json";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
+import "./mode3.css";
 import { parseChordInput, uniqueChordSymbols } from "./services/chordParser";
 import type { AppMode } from "./types/chord";
-import "./mode3.css";
 
 const REPOSITORY_URL = "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
 
@@ -110,7 +111,7 @@ function App() {
       </main>
 
       <footer>
-        <span>Guitar Chord Board · 0.2.0</span>
+        <span>Guitar Chord Board · {packageJson.version}</span>
         <span>React + TypeScript + Tonal + SVG</span>
       </footer>
     </div>
