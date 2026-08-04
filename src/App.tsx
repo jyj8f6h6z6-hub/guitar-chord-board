@@ -116,6 +116,17 @@ function App() {
     }));
   }
 
+  function applyOverviewTransposition(symbols: readonly string[]) {
+    setSongItems((current) =>
+      current.map((item, index) => ({
+        ...item,
+        symbol: symbols[index] ?? item.symbol,
+      })),
+    );
+
+    setSongShapeIds({});
+  }
+
   function replaceWithRecognizedChords(symbols: string[]) {
     const nextItems = createSongChordItems(symbols);
 
@@ -233,6 +244,7 @@ function App() {
           <SongChordOverview
             items={songItems}
             selectedShapeIds={songShapeIds}
+            onApplyTransposition={applyOverviewTransposition}
           />
         )}
 

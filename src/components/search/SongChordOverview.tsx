@@ -1,15 +1,61 @@
+import { useMemo, useState } from "react";
+import {
+  KEY_OPTIONS,
+  getTranspositionSemitones,
+  keyPrefersFlats,
+  transposeChordSymbol,
+} from "../../services/chordTranspose";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
 
 interface SongChordOverviewProps {
   items: readonly SongChordItem[];
   selectedShapeIds: Readonly<Record<string, string>>;
+  onApplyTransposition: (symbols: readonly string[]) => void;
 }
 
 export function SongChordOverview({
   items,
   selectedShapeIds,
+  onApplyTransposition,
 }: SongChordOverviewProps) {
+  const [sourceKey, setSourceKey] = useState("C");
+  const [targetKey, setTargetKey] = useState("D");
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  const transposedSymbols = useMemo(() => {
+    const semitones = getTranspositionSemitones(sourceKey, targetKey);
+    const preferFlats = keyPrefersFlats(targetKey);
+
+    return items.map((item) =>
+      transposeChordSymbol(item.symbol, semitones, preferFlats),
+    );
+  }, [items, sourceKey, targetKey]);
+
+  const displayedSymbols = isPreviewing
+    ? transposedSymbols
+    : items.map((item) => item.symbol);
+
+  function previewTransposition() {
+    setIsPreviewing(true);
+  }
+
+  function restoreOriginalKey() {
+    setTargetKey(sourceKey);
+    setIsPreviewing(false);
+  }
+
+  function applyTransposition() {
+    if (!isPreviewing || sourceKey === targetKey) {
+      return;
+    }
+
+    onApplyTransposition(transposedSymbols);
+
+    setSourceKey(targetKey);
+    setIsPreviewing(false);
+  }
+
   return (
     <section
       className="workspace workspace--overview"
@@ -20,18 +66,121 @@ export function SongChordOverview({
         <h2 id="overview-mode-title">歌曲和弦精簡總覽</h2>
       </div>
 
+      <section
+        className="overview-transpose-panel"
+        aria-labelledby="overview-transpose-title"
+      >
+        <div className="overview-transpose-panel__heading">
+          <div>
+            <p className="eyebrow">移調</p>
+            <h3 id="overview-transpose-title">調整歌曲調性</h3>
+          </div>
+
+          {isPreviewing && sourceKey !== targetKey && (
+            <span className="overview-transpose-status">
+              預覽中：{sourceKey} → {targetKey}
+            </span>
+          )}
+        </div>
+
+        <div className="overview-transpose-controls">
+          <label className="overview-key-field" htmlFor="overview-source-key">
+            <span className="overview-key-field__label">
+              <span aria-hidden="true">♫</span>
+              原調
+            </span>
+
+            <select
+              id="overview-source-key"
+              value={sourceKey}
+              onChange={(event) => {
+                setSourceKey(event.target.value);
+                setIsPreviewing(false);
+              }}
+            >
+              {KEY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <span className="overview-transpose-arrow" aria-hidden="true">
+            →
+          </span>
+
+          <label className="overview-key-field" htmlFor="overview-target-key">
+            <span className="overview-key-field__label">
+              <span aria-hidden="true">⇄</span>
+              目標調
+            </span>
+
+            <select
+              id="overview-target-key"
+              value={targetKey}
+              onChange={(event) => {
+                setTargetKey(event.target.value);
+                setIsPreviewing(false);
+              }}
+            >
+              {KEY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="overview-transpose-actions">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={previewTransposition}
+            disabled={items.length === 0}
+          >
+            預覽移調
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={applyTransposition}
+            disabled={
+              items.length === 0 ||
+              !isPreviewing ||
+              sourceKey === targetKey
+            }
+          >
+            套用到和弦編排區
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={restoreOriginalKey}
+            disabled={!isPreviewing && sourceKey === targetKey}
+          >
+            恢復原調
+          </button>
+        </div>
+      </section>
+
       <div className="song-overview-summary" aria-live="polite">
         <strong>{items.length} 個和弦</strong>
-        <span>內容與模式二的和弦編排區同步。</span>
+
+        <span>
+          {isPreviewing
+            ? "目前顯示移調預覽，尚未修改模式二。"
+            : "內容與模式二的和弦編排區同步。"}
+        </span>
       </div>
 
       {items.length > 0 ? (
         <div className="song-overview-grid">
           {items.map((item, index) => (
-            <div
-              className="song-overview-item"
-              key={item.id}
-            >
+            <div className="song-overview-item" key={item.id}>
               <span
                 className="song-overview-number"
                 aria-label={`第 ${index + 1} 個和弦`}
@@ -40,11 +189,11 @@ export function SongChordOverview({
               </span>
 
               <ChordCard
-                symbol={item.symbol}
+                symbol={displayedSymbols[index]}
                 compact
-                eyebrow="歌曲和弦"
+                eyebrow={isPreviewing ? "移調預覽" : "歌曲和弦"}
                 selectedShapeId={
-                  selectedShapeIds[item.id]
+                  isPreviewing ? undefined : selectedShapeIds[item.id]
                 }
               />
             </div>

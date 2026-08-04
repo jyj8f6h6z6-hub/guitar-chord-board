@@ -184,3 +184,118 @@
     line-height: 1.35;
   }
 }
+
+/* 模式三：移調控制 */
+.overview-transpose-panel {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(23, 25, 35, 0.84);
+}
+
+.overview-transpose-panel__heading {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.overview-transpose-panel__heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.overview-transpose-status {
+  padding: 7px 10px;
+  border: 1px solid rgba(233, 185, 73, 0.45);
+  border-radius: 999px;
+  background: rgba(233, 185, 73, 0.1);
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.overview-transpose-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: end;
+  gap: 14px;
+}
+
+.overview-key-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.overview-key-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.overview-key-field__label > span {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.overview-transpose-arrow {
+  padding-bottom: 15px;
+  color: var(--accent-strong);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.overview-transpose-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.overview-transpose-actions .primary-button,
+.overview-transpose-actions .secondary-button {
+  min-height: 46px;
+}
+
+.overview-transpose-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 600px) {
+  .overview-transpose-panel {
+    padding: 14px;
+  }
+
+  .overview-transpose-panel__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .overview-transpose-controls {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .overview-transpose-arrow {
+    padding: 0;
+    text-align: center;
+    transform: rotate(90deg);
+  }
+
+  .overview-transpose-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .overview-transpose-actions .primary-button,
+  .overview-transpose-actions .secondary-button {
+    width: 100%;
+  }
+}
