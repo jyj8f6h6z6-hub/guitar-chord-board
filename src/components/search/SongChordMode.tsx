@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { CHORD_TYPE_OPTIONS, ROOT_NOTES } from "../../data/chordTypes";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
-import { ScoreImportPanel } from "../score/ScoreImportPanel";
+
 
 interface SongChordModeProps {
   items: readonly SongChordItem[];
@@ -34,8 +34,7 @@ interface SongChordModeProps {
   selectedShapeIds: Readonly<Record<string, string>>;
   onShapeChange: (itemId: string, shapeId: string) => void;
   onReplaceChord: (itemId: string, newSymbol: string) => void;
-  onReplaceRecognized: (symbols: string[]) => void;
-  onAppendRecognized: (symbols: string[]) => void;
+
 }
 
 interface ActiveDrag {
@@ -226,8 +225,7 @@ export function SongChordMode({
   selectedShapeIds,
   onShapeChange,
   onReplaceChord,
-  onReplaceRecognized,
-  onAppendRecognized,
+
 }: SongChordModeProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(
     null,
@@ -416,11 +414,7 @@ export function SongChordMode({
         <h2 id="song-mode-title">一次整理整首歌的和弦</h2>
       </div>
 
-      <ScoreImportPanel
-        currentSymbols={items.map((item) => item.symbol)}
-        onReplaceRecognized={onReplaceRecognized}
-        onAppendRecognized={onAppendRecognized}
-      />
+
 
       <DndContext
         sensors={sensors}

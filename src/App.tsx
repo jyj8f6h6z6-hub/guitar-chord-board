@@ -1,11 +1,11 @@
 import { useState } from "react";
 import packageJson from "../package.json";
-import { ScoreStudio } from "./components/score/ScoreStudio";
+
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
 import "./mode3.css";
-import "./score.css";
+
 import type { AppMode, SongChordItem } from "./types/chord";
 
 const REPOSITORY_URL =
@@ -127,33 +127,6 @@ function App() {
     setSongShapeIds({});
   }
 
-  function replaceWithRecognizedChords(symbols: string[]) {
-    const nextItems = createSongChordItems(symbols);
-
-    setSongItems(
-      removeDuplicates ? removeDuplicateItems(nextItems) : nextItems,
-    );
-    setSongShapeIds({});
-  }
-
-  function appendRecognizedChords(symbols: string[]) {
-    setSongItems((current) => {
-      const nextItems = [
-        ...current,
-        ...createSongChordItems(symbols),
-      ];
-
-      return removeDuplicates
-        ? removeDuplicateItems(nextItems)
-        : nextItems;
-    });
-  }
-
-  function applyScoreChords(symbols: string[]) {
-    replaceWithRecognizedChords(symbols);
-    setMode("song");
-  }
-
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -215,13 +188,7 @@ function App() {
             精簡總覽
           </button>
 
-          <button
-            type="button"
-            className={mode === "score" ? "is-active" : ""}
-            onClick={() => setMode("score")}
-          >
-            智慧歌譜
-          </button>
+
         </nav>
 
         {mode === "single" && <SingleChordSearch />}
@@ -235,8 +202,7 @@ function App() {
             selectedShapeIds={songShapeIds}
             onShapeChange={selectSongShape}
             onReplaceChord={replaceSongChord}
-            onReplaceRecognized={replaceWithRecognizedChords}
-            onAppendRecognized={appendRecognizedChords}
+
           />
         )}
 
@@ -248,9 +214,7 @@ function App() {
           />
         )}
 
-        {mode === "score" && (
-          <ScoreStudio onApplyToSong={applyScoreChords} />
-        )}
+
       </main>
 
       <footer>
