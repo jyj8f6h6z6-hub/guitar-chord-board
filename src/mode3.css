@@ -126,7 +126,7 @@
   }
 }
 
-/* 模式二：每一列顯示與模式一相同的 12 種和弦類型 */
+/* 模式二：選中的和弦顯示 12 種和弦類型 */
 .chord-type-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

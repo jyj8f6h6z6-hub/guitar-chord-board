@@ -31,4 +31,9 @@ export interface ChordTheoryResult {
   valid: boolean;
 }
 
+export interface SongChordItem {
+  id: string;
+  symbol: string;
+}
+
 export type AppMode = "single" | "song" | "overview" | "score";
