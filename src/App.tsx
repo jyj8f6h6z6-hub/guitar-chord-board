@@ -163,32 +163,46 @@ function App() {
           </div>
         </section>
 
-        <nav className="mode-tabs" aria-label="選擇操作模式">
+        <nav className="main-navigation" aria-label="主要功能">
           <button
             type="button"
-            className={mode === "single" ? "is-active" : ""}
+            className={`main-navigation__single${
+              mode === "single" ? " is-active" : ""
+            }`}
             onClick={() => setMode("single")}
           >
             單一和弦查詢
           </button>
 
-          <button
-            type="button"
-            className={mode === "song" ? "is-active" : ""}
-            onClick={() => setMode("song")}
-          >
-            歌曲和弦清單
-          </button>
+          <span className="main-navigation__divider" aria-hidden="true" />
 
-          <button
-            type="button"
-            className={mode === "overview" ? "is-active" : ""}
-            onClick={() => setMode("overview")}
-          >
-            精簡總覽
-          </button>
+          <div className="arrangement-navigation">
+            <button
+              type="button"
+              className={`arrangement-navigation__step${
+                mode === "song" ? " is-active" : ""
+              }`}
+              onClick={() => setMode("song")}
+            >
+              <span className="arrangement-navigation__number">①</span>
+              <span>建立和弦編排</span>
+            </button>
 
+            <span className="arrangement-navigation__arrow" aria-hidden="true">
+              →
+            </span>
 
+            <button
+              type="button"
+              className={`arrangement-navigation__step${
+                mode === "overview" ? " is-active" : ""
+              }`}
+              onClick={() => setMode("overview")}
+            >
+              <span className="arrangement-navigation__number">②</span>
+              <span>精簡總覽與移調</span>
+            </button>
+          </div>
         </nav>
 
         {mode === "single" && <SingleChordSearch />}
@@ -219,7 +233,7 @@ function App() {
 
       <footer>
         <span>Guitar Chord Board · {packageJson.version}</span>
-        <span>React + TypeScript + Tonal + OCR + PDF</span>
+        <span>React + TypeScript + Tonal + dnd-kit</span>
       </footer>
     </div>
   );

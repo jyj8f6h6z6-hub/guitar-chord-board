@@ -1,4 +1,4 @@
-/* 模式三：歌曲和弦精簡總覽 */
+/* 和弦編排第二步：精簡總覽與移調 */
 .mode-tabs {
   max-width: 100%;
   overflow-x: auto;
@@ -126,7 +126,7 @@
   }
 }
 
-/* 模式二：選中的和弦顯示 12 種和弦類型 */
+/* 和弦編排第一步：選中的和弦顯示 12 種和弦類型 */
 .chord-type-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -185,7 +185,7 @@
   }
 }
 
-/* 模式三：移調控制 */
+/* 和弦編排第二步：移調控制 */
 .overview-transpose-panel {
   margin-bottom: 18px;
   padding: 18px;

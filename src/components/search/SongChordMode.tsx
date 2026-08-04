@@ -410,8 +410,8 @@ export function SongChordMode({
       aria-labelledby="song-mode-title"
     >
       <div className="workspace__intro">
-        <p className="eyebrow">模式二</p>
-        <h2 id="song-mode-title">一次整理整首歌的和弦</h2>
+        <p className="eyebrow">和弦編排・第一步</p>
+        <h2 id="song-mode-title">建立和弦編排</h2>
       </div>
 
 

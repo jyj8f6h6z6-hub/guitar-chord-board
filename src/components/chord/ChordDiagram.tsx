@@ -18,7 +18,7 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
   return (
     <svg
       className="chord-diagram"
-      viewBox="0 0 220 250"
+      viewBox="-30 0 250 250"
       width={width}
       role="img"
       aria-label={`${symbol} 吉他和弦按法圖`}
@@ -27,7 +27,7 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
 
       {shape.baseFret > 1 && (
         <text x="9" y={GRID_TOP + 22} className="diagram-base-fret">
-          {shape.baseFret}fr
+          {shape.baseFret}
         </text>
       )}
 

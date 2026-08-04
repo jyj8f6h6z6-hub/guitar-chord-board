@@ -62,8 +62,8 @@ export function SongChordOverview({
       aria-labelledby="overview-mode-title"
     >
       <div className="workspace__intro">
-        <p className="eyebrow">模式三</p>
-        <h2 id="overview-mode-title">歌曲和弦精簡總覽</h2>
+        <p className="eyebrow">和弦編排・第二步</p>
+        <h2 id="overview-mode-title">總覽與移調</h2>
       </div>
 
       <section
@@ -172,8 +172,8 @@ export function SongChordOverview({
 
         <span>
           {isPreviewing
-            ? "目前顯示移調預覽，尚未修改模式二。"
-            : "內容與模式二的和弦編排區同步。"}
+            ? "目前顯示移調預覽，尚未修改第一步的和弦編排。"
+            : "內容與第一步建立的和弦編排同步。"}
         </span>
       </div>
 
@@ -201,7 +201,7 @@ export function SongChordOverview({
         </div>
       ) : (
         <div className="notice">
-          模式二目前沒有和弦。請先到「歌曲和弦清單」加入和弦。
+          尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。
         </div>
       )}
     </section>
