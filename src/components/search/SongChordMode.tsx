@@ -21,7 +21,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
-import { CHORD_TYPE_OPTIONS, ROOT_NOTES } from "../../data/chordTypes";
+import type { Accidental } from "../../data/chordTypes";
+import {
+  ACCIDENTAL_OPTIONS,
+  CHORD_TYPE_OPTIONS,
+  ROOT_NOTES,
+} from "../../data/chordTypes";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
 
@@ -51,6 +56,38 @@ const CHORD_ROOT_PATTERN = /^([A-G])([#b]?)/;
 function getChordRoot(symbol: string): string | null {
   const match = symbol.match(CHORD_ROOT_PATTERN);
   return match ? `${match[1]}${match[2]}` : null;
+}
+
+function getChordAccidental(symbol: string): Accidental {
+  const match = symbol.match(CHORD_ROOT_PATTERN);
+
+  if (!match) {
+    return "";
+  }
+
+  const accidental = match[2];
+
+  if (accidental === "#" || accidental === "b") {
+    return accidental;
+  }
+
+  return "";
+}
+
+function replaceChordAccidental(
+  symbol: string,
+  accidental: Accidental,
+): string {
+  const match = symbol.match(CHORD_ROOT_PATTERN);
+
+  if (!match) {
+    return symbol;
+  }
+
+  const rootNote = match[1];
+  const chordSuffix = symbol.slice(match[0].length);
+
+  return `${rootNote}${accidental}${chordSuffix}`;
 }
 
 function createSongChordItem(symbol: string): SongChordItem {
@@ -251,7 +288,11 @@ export function SongChordMode({
     ? getChordRoot(selectedItem.symbol)
     : null;
 
-  useEffect(() => {
+  const selectedAccidental = selectedItem
+  ? getChordAccidental(selectedItem.symbol)
+  : "";
+
+    useEffect(() => {
     if (
       selectedItemId &&
       !items.some((item) => item.id === selectedItemId)
@@ -529,11 +570,37 @@ export function SongChordMode({
           aria-labelledby="selected-chord-editor-title"
         >
           <div className="selected-chord-editor__heading">
-            <div>
-              <p className="eyebrow">目前編輯</p>
-              <h3 id="selected-chord-editor-title">
-                {selectedItem.symbol}
-              </h3>
+            <div className="selected-chord-editor__heading-main">
+              <div>
+                <p className="eyebrow">目前編輯</p>
+                <h3 id="selected-chord-editor-title">
+                  {selectedItem.symbol}
+                </h3>
+              </div>
+
+              <label className="selected-chord-editor__accidental">
+                <span>升降記號</span>
+
+                <select
+                  value={selectedAccidental}
+                  onChange={(event) => {
+                    const newAccidental = event.target.value as Accidental;
+
+                    const newSymbol = replaceChordAccidental(
+                      selectedItem.symbol,
+                      newAccidental,
+                    );
+
+                    onReplaceChord(selectedItem.id, newSymbol);
+                  }}
+                >
+                  {ACCIDENTAL_OPTIONS.map((option) => (
+                    <option key={option.value || "natural"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <button

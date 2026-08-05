@@ -1287,6 +1287,29 @@ select:focus-visible {
   gap: 16px;
 }
 
+.selected-chord-editor__heading-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
+}
+
+.selected-chord-editor__accidental {
+  width: min(280px, 100%);
+  display: grid;
+  gap: 8px;
+}
+
+.selected-chord-editor__accidental > span {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.selected-chord-editor__accidental select {
+  min-height: 48px;
+}
+
 .selected-chord-editor__heading h3 {
   margin: 0;
   font-size: 1.8rem;
@@ -1397,6 +1420,17 @@ select:focus-visible {
 
   .selected-chord-editor__heading {
     align-items: flex-start;
+  }
+
+  .selected-chord-editor__heading-main {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .selected-chord-editor__accidental {
+    width: 100%;
   }
 
   .selected-chord-editor__heading .secondary-button {
