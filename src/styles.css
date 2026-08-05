@@ -1102,6 +1102,52 @@ select:focus-visible {
   text-align: right;
 }
 
+.palette-heading-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.palette-heading-actions > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.palette-accidental-control {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(16, 18, 26, 0.72);
+}
+
+.palette-accidental-control button {
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.palette-accidental-control button:hover {
+  color: var(--text);
+  background: rgba(233, 185, 73, 0.08);
+}
+
+.palette-accidental-control button.is-active {
+  color: #19160f;
+  background: var(--accent);
+}
+
 .palette-chord-list {
   display: grid;
   grid-template-columns: repeat(7, minmax(70px, 1fr));
@@ -1287,28 +1333,8 @@ select:focus-visible {
   gap: 16px;
 }
 
-.selected-chord-editor__heading-main {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 32px;
-}
 
-.selected-chord-editor__accidental {
-  width: min(280px, 100%);
-  display: grid;
-  gap: 8px;
-}
 
-.selected-chord-editor__accidental > span {
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.selected-chord-editor__accidental select {
-  min-height: 48px;
-}
 
 .selected-chord-editor__heading h3 {
   margin: 0;
@@ -1380,6 +1406,27 @@ select:focus-visible {
     gap: 5px;
   }
 
+  .palette-heading-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .palette-heading-actions > span {
+    text-align: left;
+  }
+
+  .palette-accidental-control {
+    width: 100%;
+  }
+
+  .palette-accidental-control button {
+    flex: 1;
+    padding-inline: 7px;
+    font-size: 0.8rem;
+  }
+
   .song-arranger__heading > span {
     text-align: left;
   }
@@ -1422,16 +1469,9 @@ select:focus-visible {
     align-items: flex-start;
   }
 
-  .selected-chord-editor__heading-main {
-    width: 100%;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 14px;
-  }
 
-  .selected-chord-editor__accidental {
-    width: 100%;
-  }
+
+
 
   .selected-chord-editor__heading .secondary-button {
     min-height: 42px;

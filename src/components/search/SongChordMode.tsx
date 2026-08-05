@@ -21,12 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
-import type { Accidental } from "../../data/chordTypes";
-import {
-  ACCIDENTAL_OPTIONS,
-  CHORD_TYPE_OPTIONS,
-  ROOT_NOTES,
-} from "../../data/chordTypes";
+import { CHORD_TYPE_OPTIONS, ROOT_NOTES } from "../../data/chordTypes";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
 
@@ -53,42 +48,41 @@ const PALETTE_PREFIX = "palette:";
 
 const CHORD_ROOT_PATTERN = /^([A-G])([#b]?)/;
 
+type PaletteAccidentalMode = "natural" | "flat" | "sharp";
+
+const PALETTE_ROOT_NOTES: Record<
+  PaletteAccidentalMode,
+  readonly string[]
+> = {
+  natural: ROOT_NOTES,
+
+  flat: [
+    "B",
+    "Db",
+    "Eb",
+    "E",
+    "Gb",
+    "Ab",
+    "Bb",
+  ],
+
+  sharp: [
+    "C#",
+    "D#",
+    "F",
+    "F#",
+    "G#",
+    "A#",
+    "C",
+  ],
+};
+
 function getChordRoot(symbol: string): string | null {
   const match = symbol.match(CHORD_ROOT_PATTERN);
   return match ? `${match[1]}${match[2]}` : null;
 }
 
-function getChordAccidental(symbol: string): Accidental {
-  const match = symbol.match(CHORD_ROOT_PATTERN);
 
-  if (!match) {
-    return "";
-  }
-
-  const accidental = match[2];
-
-  if (accidental === "#" || accidental === "b") {
-    return accidental;
-  }
-
-  return "";
-}
-
-function replaceChordAccidental(
-  symbol: string,
-  accidental: Accidental,
-): string {
-  const match = symbol.match(CHORD_ROOT_PATTERN);
-
-  if (!match) {
-    return symbol;
-  }
-
-  const rootNote = match[1];
-  const chordSuffix = symbol.slice(match[0].length);
-
-  return `${rootNote}${accidental}${chordSuffix}`;
-}
 
 function createSongChordItem(symbol: string): SongChordItem {
   return {
@@ -264,6 +258,10 @@ export function SongChordMode({
   onReplaceChord,
 
 }: SongChordModeProps) {
+
+  const [paletteAccidentalMode, setPaletteAccidentalMode] =
+  useState<PaletteAccidentalMode>("natural");
+
   const [selectedItemId, setSelectedItemId] = useState<string | null>(
     null,
   );
@@ -282,15 +280,18 @@ export function SongChordMode({
     }),
   );
 
+  const paletteRootNotes =
+  PALETTE_ROOT_NOTES[paletteAccidentalMode];
+
   const selectedItem =
     items.find((item) => item.id === selectedItemId) ?? null;
+
+
   const selectedRoot = selectedItem
     ? getChordRoot(selectedItem.symbol)
     : null;
 
-  const selectedAccidental = selectedItem
-  ? getChordAccidental(selectedItem.symbol)
-  : "";
+
 
     useEffect(() => {
     if (
@@ -475,11 +476,55 @@ export function SongChordMode({
                 <h3 id="palette-title">選擇根音</h3>
               </div>
 
-              <span>點擊加入，或拖曳到編排區</span>
+              <div className="palette-heading-actions">
+                <div
+                  className="palette-accidental-control"
+                  role="group"
+                  aria-label="調整待選區根音"
+                >
+                  <button
+                    type="button"
+                    className={
+                      paletteAccidentalMode === "flat"
+                        ? "is-active"
+                        : ""
+                    }
+                    onClick={() => setPaletteAccidentalMode("flat")}
+                  >
+                    ♭ 降半音
+                  </button>
+
+                  <button
+                    type="button"
+                    className={
+                      paletteAccidentalMode === "natural"
+                        ? "is-active"
+                        : ""
+                    }
+                    onClick={() => setPaletteAccidentalMode("natural")}
+                  >
+                    ♮ 還原
+                  </button>
+
+                  <button
+                    type="button"
+                    className={
+                      paletteAccidentalMode === "sharp"
+                        ? "is-active"
+                        : ""
+                    }
+                    onClick={() => setPaletteAccidentalMode("sharp")}
+                  >
+                    ♯ 升半音
+                  </button>
+                </div>
+
+                <span>點擊加入，或拖曳到編排區</span>
+              </div>
             </div>
 
             <div className="palette-chord-list">
-              {ROOT_NOTES.map((symbol) => (
+              {paletteRootNotes.map((symbol) => (
                 <PaletteChord
                   key={symbol}
                   symbol={symbol}
@@ -577,30 +622,6 @@ export function SongChordMode({
                   {selectedItem.symbol}
                 </h3>
               </div>
-
-              <label className="selected-chord-editor__accidental">
-                <span>升降記號</span>
-
-                <select
-                  value={selectedAccidental}
-                  onChange={(event) => {
-                    const newAccidental = event.target.value as Accidental;
-
-                    const newSymbol = replaceChordAccidental(
-                      selectedItem.symbol,
-                      newAccidental,
-                    );
-
-                    onReplaceChord(selectedItem.id, newSymbol);
-                  }}
-                >
-                  {ACCIDENTAL_OPTIONS.map((option) => (
-                    <option key={option.value || "natural"} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
 
             <button
