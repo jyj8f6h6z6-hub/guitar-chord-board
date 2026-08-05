@@ -2,14 +2,50 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
     <meta
       name="description"
       content="查詢吉他和弦按法、組成音，並一次整理歌曲所需和弦。"
     />
-    <meta name="theme-color" content="#171923" />
+
+    <meta name="theme-color" content="#8b451f" />
+
+    <!-- 瀏覽器分頁圖示 -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="%BASE_URL%favicon.png"
+    />
+
+    <!-- iPhone、iPad 加到主畫面的圖示 -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="%BASE_URL%apple-touch-icon.png"
+    />
+
+    <!-- Android 與可安裝網頁設定 -->
+    <link
+      rel="manifest"
+      href="%BASE_URL%site.webmanifest"
+    />
+
+    <!-- iPhone 加到主畫面後的名稱與顯示方式 -->
+    <meta name="apple-mobile-web-app-title" content="和弦板" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+
     <title>Guitar Chord Board</title>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
