@@ -243,6 +243,29 @@
   font-size: 1rem;
 }
 
+.overview-key-field select {
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(16, 18, 26, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.overview-key-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(233, 185, 73, 0.14);
+}
+
+
 .overview-transpose-arrow {
   padding-bottom: 15px;
   color: var(--accent-strong);
@@ -278,15 +301,62 @@
     gap: 7px;
   }
 
+  /* 原調、箭頭、目標調改成左右排列 */
   .overview-transpose-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    align-items: end;
     gap: 10px;
   }
 
-  .overview-transpose-arrow {
-    padding: 0;
+  .overview-key-field {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  /* ♫ 原調、⇄ 目標調置中顯示在方框上方 */
+  .overview-key-field__label {
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .overview-key-field__label > span {
+    font-size: 1rem;
+  }
+
+  /* 原調與目標調改成接近正方形的金色圓角框 */
+  .overview-key-field select {
+    width: 100%;
+    aspect-ratio: 1 / 0.78;
+    min-height: 0;
+    padding: 10px;
+    border: 1px solid rgba(233, 185, 73, 0.65);
+    border-radius: 20px;
+    background: var(--accent);
+    color: #17130b;
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1;
     text-align: center;
-    transform: rotate(90deg);
+    text-align-last: center;
+    cursor: pointer;
+  }
+
+  .overview-key-field select:focus {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 3px rgba(233, 185, 73, 0.2);
+  }
+
+  /* 中間維持向右箭頭，不再旋轉 */
+  .overview-transpose-arrow {
+    align-self: end;
+    padding: 0 0 26px;
+    color: var(--accent-strong);
+    font-size: 2rem;
+    line-height: 1;
+    text-align: center;
+    transform: none;
   }
 
   .overview-transpose-actions {
@@ -298,4 +368,49 @@
   .overview-transpose-actions .secondary-button {
     width: 100%;
   }
+}
+
+.transpose-apply-button,
+.transpose-reset-button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 11px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.transpose-apply-button {
+  border-color: rgba(233, 185, 73, 0.72);
+  background: rgba(233, 185, 73, 0.1);
+  color: var(--accent);
+}
+
+.transpose-apply-button:hover:not(:disabled) {
+  background: rgba(233, 185, 73, 0.2);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.transpose-reset-button {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+}
+
+.transpose-reset-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.transpose-apply-button:disabled,
+.transpose-reset-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
 }

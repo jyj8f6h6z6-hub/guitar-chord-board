@@ -145,7 +145,7 @@ export function SongChordOverview({
 
           <button
             type="button"
-            className="secondary-button"
+            className="secondary-button transpose-apply-button"
             onClick={applyTransposition}
             disabled={
               items.length === 0 ||
@@ -158,7 +158,7 @@ export function SongChordOverview({
 
           <button
             type="button"
-            className="secondary-button"
+            className="secondary-button transpose-reset-button"
             onClick={restoreOriginalKey}
             disabled={!isPreviewing && sourceKey === targetKey}
           >

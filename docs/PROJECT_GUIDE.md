@@ -742,8 +742,8 @@ interface SongChordItem {
 [
   { id: "唯一-id-1", symbol: "C" },
   { id: "唯一-id-2", symbol: "G" },
-  { id: "唯一-id-3", symbol: "C" }
-]
+  { id: "唯一-id-3", symbol: "C" },
+];
 ```
 
 獨立 ID 可確保兩個相同的 `C` 仍能分別移動、修改類型與選擇把位。
@@ -777,7 +777,7 @@ C D E F G A B
 拖出移除依賴：
 
 ```ts
-collisionDetection={pointerWithin}
+collisionDetection = { pointerWithin };
 ```
 
 若改回 `closestCenter`，滑鼠離開編排區後仍可能命中最近的項目，導致無法判斷 `event.over === null`。
@@ -1700,7 +1700,7 @@ D:\guitar-chord-board\src\src\data\chordTypes.ts
 - 精簡總覽與移調與移調。
 - `@dnd-kit` 拖曳套件。
 
-0.4.0 曾加入圖片、PDF、OCR 與智慧歌譜功能，但這些功能已於 0.6.0 從本專案移除。
+  0.4.0 曾加入圖片、PDF、OCR 與智慧歌譜功能，但這些功能已於 0.6.0 從本專案移除。
 
 因此不要再次套用舊的歌譜更新包：
 
