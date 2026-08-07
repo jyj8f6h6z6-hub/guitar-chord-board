@@ -36,4 +36,4 @@ export interface SongChordItem {
   symbol: string;
 }
 
-export type AppMode = "single" | "song" | "overview";
+export type AppMode = "single" | "song" | "overview" | "score";

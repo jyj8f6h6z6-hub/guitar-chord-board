@@ -6,6 +6,8 @@ import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
 import "./mode3.css";
 
+import { ScoreEditor } from "./score/ScoreEditor";
+
 import type { AppMode, SongChordItem } from "./types/chord";
 
 const REPOSITORY_URL =
@@ -203,6 +205,18 @@ function App() {
               <span>精簡總覽與移調</span>
             </button>
           </div>
+                <span className="main-navigation__divider" aria-hidden="true" />
+
+            <button
+              type="button"
+              className={`main-navigation__single${
+                mode === "score" ? " is-active" : ""
+              }`}
+              onClick={() => setMode("score")}
+            >
+              簡譜製作
+            </button>
+
         </nav>
 
         {mode === "single" && <SingleChordSearch />}
@@ -227,6 +241,8 @@ function App() {
             onApplyTransposition={applyOverviewTransposition}
           />
         )}
+
+      {mode === "score" && <ScoreEditor />}
 
 
       </main>
