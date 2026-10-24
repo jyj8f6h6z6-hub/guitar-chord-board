@@ -21,7 +21,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
-import { CHORD_TYPE_OPTIONS, ROOT_NOTES } from "../../data/chordTypes";
+import {
+  CHORD_TYPE_OPTIONS,
+  ROOT_KEY_OPTIONS,
+  ROOT_NOTES,
+  findRootKeyOption,
+  formatNoteLabel,
+} from "../../data/chordTypes";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
 import { ShareButton } from "../ShareButton";
@@ -295,6 +301,13 @@ export function SongChordMode({
   const selectedRoot = selectedItem
     ? getChordRoot(selectedItem.symbol)
     : null;
+
+  const [selectedBaseSymbol, selectedBassNote] = selectedItem
+    ? selectedItem.symbol.split("/")
+    : ["", undefined];
+  const selectedRootPitchClass = selectedRoot
+    ? findRootKeyOption(selectedRoot)?.pitchClass
+    : undefined;
 
 
 
@@ -669,9 +682,60 @@ export function SongChordMode({
                 <span>點選後只修改目前選中的和弦</span>
               </div>
 
+              <div className="bass-picker">
+                <div className="bass-picker__heading">
+                  <strong>低音（分數和弦）</strong>
+                  <small>換成其他低音，例如 C/G、G/B</small>
+                </div>
+
+                <div className="bass-picker__list">
+                  <button
+                    type="button"
+                    className={`ux-key${selectedBassNote ? "" : " is-active"}`}
+                    aria-pressed={!selectedBassNote}
+                    onClick={() =>
+                      onReplaceChord(selectedItem.id, selectedBaseSymbol)
+                    }
+                  >
+                    原位
+                  </button>
+
+                  {ROOT_KEY_OPTIONS.map((option) => {
+                    const isRoot = option.pitchClass === selectedRootPitchClass;
+                    const isActive =
+                      selectedBassNote !== undefined &&
+                      findRootKeyOption(selectedBassNote)?.pitchClass ===
+                        option.pitchClass;
+
+                    return (
+                      <button
+                        key={option.pitchClass}
+                        type="button"
+                        className={`ux-key${
+                          option.sharp !== option.flat ? " is-black" : ""
+                        }${isActive ? " is-active" : ""}`}
+                        aria-pressed={isActive}
+                        disabled={isRoot}
+                        title={isRoot ? "與根音相同" : undefined}
+                        onClick={() =>
+                          onReplaceChord(
+                            selectedItem.id,
+                            `${selectedBaseSymbol}/${option.common}`,
+                          )
+                        }
+                      >
+                        {formatNoteLabel(option.common)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="chord-type-grid">
                 {CHORD_TYPE_OPTIONS.map((option) => {
-                  const candidateSymbol = `${selectedRoot}${option.suffix}`;
+                  const candidateSymbol = `${selectedRoot}${option.suffix}${
+                    selectedBassNote ? `/${selectedBassNote}` : ""
+                  }`;
                   const isCurrent =
                     candidateSymbol === selectedItem.symbol;
 

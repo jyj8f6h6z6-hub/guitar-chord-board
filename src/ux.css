@@ -199,6 +199,56 @@
   background: rgba(233, 185, 73, 0.22);
 }
 
+.ux-key:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.ux-legend__hint {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.ux-clear {
+  border: 0;
+  padding: 4px 6px;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.bass-picker {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(16, 18, 26, 0.5);
+}
+
+.bass-picker__heading {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.bass-picker__heading small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.bass-picker__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 8px;
+}
+
 /* ---------- 和弦編排 ---------- */
 .song-arranger__count {
   display: flex;

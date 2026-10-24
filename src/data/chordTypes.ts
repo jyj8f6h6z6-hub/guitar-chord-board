@@ -134,3 +134,10 @@ export type RootNotation = "common" | "sharp" | "flat";
 export function formatNoteLabel(note: string): string {
   return note.length === 2 ? note.replace("#", "♯").replace("b", "♭") : note;
 }
+
+/** 以任何拼法（C#、Db…）找出對應的根音選項。 */
+export function findRootKeyOption(note: string): RootKeyOption | undefined {
+  return ROOT_KEY_OPTIONS.find(
+    (option) => option.common === note || option.sharp === note || option.flat === note,
+  );
+}

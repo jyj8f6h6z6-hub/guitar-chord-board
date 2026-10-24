@@ -1,6 +1,7 @@
 import type { ChordShape } from "../types/chord";
 import { createGeneratedChordShapes } from "./generatedChordShapes";
 import { resolveChordAlias } from "../utils/chordAliases";
+import { deriveSlashShapes } from "../services/slashChords";
 
 const HAND_AUTHORED_CHORD_SHAPES: readonly ChordShape[] = [
   {
@@ -898,8 +899,55 @@ for (const shapes of SHAPES_BY_SYMBOL.values()) {
 export const CHORD_SHAPE_COUNT = CHORD_SHAPES.length;
 export const CHORD_SYMBOL_COUNT = SHAPES_BY_SYMBOL.size;
 
+const SLASH_SHAPE_CACHE = new Map<string, readonly ChordShape[]>();
+
+function sortShapes(shapes: ChordShape[]): ChordShape[] {
+  return shapes.sort((left, right) => {
+    const beginnerDifference =
+      Number(right.tags.includes("beginner")) - Number(left.tags.includes("beginner"));
+    const openDifference = Number(right.position === "open") - Number(left.position === "open");
+    return (
+      beginnerDifference ||
+      openDifference ||
+      left.baseFret - right.baseFret ||
+      left.difficulty - right.difficulty
+    );
+  });
+}
+
+/** 分數和弦：先用手寫按法，再補上由原位和弦推導出的按法。 */
+function findSlashChordShapes(resolvedSymbol: string): readonly ChordShape[] {
+  const cached = SLASH_SHAPE_CACHE.get(resolvedSymbol);
+  if (cached) {
+    return cached;
+  }
+
+  const [baseSymbol, bassNote] = resolvedSymbol.split("/");
+  const handWritten = SHAPES_BY_SYMBOL.get(resolvedSymbol) ?? [];
+  const derived = deriveSlashShapes(
+    SHAPES_BY_SYMBOL.get(baseSymbol) ?? [],
+    baseSymbol,
+    bassNote,
+    resolvedSymbol,
+  );
+
+  const knownFrets = new Set(handWritten.map((shape) => shape.frets.join(",")));
+  const merged = sortShapes([
+    ...handWritten,
+    ...derived.filter((shape) => !knownFrets.has(shape.frets.join(","))),
+  ]);
+
+  SLASH_SHAPE_CACHE.set(resolvedSymbol, merged);
+  return merged;
+}
+
 export function findChordShapes(symbol: string): readonly ChordShape[] {
   const resolvedSymbol = resolveChordAlias(symbol);
+
+  if (resolvedSymbol.includes("/")) {
+    return findSlashChordShapes(resolvedSymbol);
+  }
+
   return SHAPES_BY_SYMBOL.get(resolvedSymbol) ?? [];
 }
 

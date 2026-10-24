@@ -18,12 +18,20 @@ export function SingleChordSearch() {
   const [pitchClass, setPitchClass] = useState(0);
   const [notation, setNotation] = useState<RootNotation>("common");
   const [chordType, setChordType] = useState("");
+  const [bassPitchClass, setBassPitchClass] = useState<number | null>(null);
 
   const rootOption =
     ROOT_KEY_OPTIONS.find((option) => option.pitchClass === pitchClass) ??
     ROOT_KEY_OPTIONS[0];
   const rootSymbol = rootOption[notation];
-  const selectedChord = `${rootSymbol}${chordType}`;
+  // 低音與根音相同就等於原位和弦，不加斜線。
+  const bassOption =
+    bassPitchClass !== null && bassPitchClass !== pitchClass
+      ? ROOT_KEY_OPTIONS.find((option) => option.pitchClass === bassPitchClass)
+      : undefined;
+  const selectedChord = `${rootSymbol}${chordType}${
+    bassOption ? `/${bassOption[notation]}` : ""
+  }`;
   const selectedType =
     CHORD_TYPE_OPTIONS.find((option) => option.suffix === chordType) ??
     CHORD_TYPE_OPTIONS[0];
@@ -98,6 +106,49 @@ export function SingleChordSearch() {
                     {option.short}
                   </button>
                 ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="ux-fieldset">
+              <legend className="ux-legend">
+                <span>
+                  低音<small className="ux-legend__hint">（選填，分數和弦如 C/G）</small>
+                </span>
+
+                {bassOption && (
+                  <button
+                    type="button"
+                    className="ux-clear"
+                    onClick={() => setBassPitchClass(null)}
+                  >
+                    恢復原位
+                  </button>
+                )}
+              </legend>
+
+              <div className="ux-key-grid">
+                {ROOT_KEY_OPTIONS.map((option) => {
+                  const isRoot = option.pitchClass === pitchClass;
+                  const isActive = bassOption?.pitchClass === option.pitchClass;
+
+                  return (
+                    <button
+                      key={option.pitchClass}
+                      type="button"
+                      className={`ux-key${
+                        option.sharp !== option.flat ? " is-black" : ""
+                      }${isActive ? " is-active" : ""}`}
+                      aria-pressed={isActive}
+                      disabled={isRoot}
+                      title={isRoot ? "與根音相同" : undefined}
+                      onClick={() =>
+                        setBassPitchClass(isActive ? null : option.pitchClass)
+                      }
+                    >
+                      {formatNoteLabel(option[notation])}
+                    </button>
+                  );
+                })}
               </div>
             </fieldset>
 
