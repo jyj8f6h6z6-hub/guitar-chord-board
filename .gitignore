@@ -25,3 +25,4 @@ Thumbs.db
 *.tsbuildinfo
 
 guitar-chord-board-v*.patch
+*.bak

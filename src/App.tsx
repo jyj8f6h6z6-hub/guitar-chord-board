@@ -6,8 +6,6 @@ import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
 import "./mode3.css";
 
-import { ScoreEditor } from "./score/ScoreEditor";
-
 import type { AppMode, SongChordItem } from "./types/chord";
 
 const REPOSITORY_URL =
@@ -39,6 +37,17 @@ function removeDuplicateItems(
   });
 }
 
+function pruneShapeIds(
+  shapeIds: Record<string, string>,
+  items: readonly SongChordItem[],
+): Record<string, string> {
+  const remainingIds = new Set(items.map((item) => item.id));
+
+  return Object.fromEntries(
+    Object.entries(shapeIds).filter(([itemId]) => remainingIds.has(itemId)),
+  );
+}
+
 function App() {
   const [mode, setMode] = useState<AppMode>("single");
   const [songItems, setSongItems] = useState<SongChordItem[]>(() =>
@@ -53,39 +62,15 @@ function App() {
       : nextItems;
 
     setSongItems(normalizedItems);
-
-    const remainingIds = new Set(normalizedItems.map((item) => item.id));
-
-    setSongShapeIds((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([itemId]) =>
-          remainingIds.has(itemId),
-        ),
-      ),
-    );
+    setSongShapeIds((current) => pruneShapeIds(current, normalizedItems));
   }
 
   function updateRemoveDuplicates(value: boolean) {
     setRemoveDuplicates(value);
 
-    if (!value) {
-      return;
+    if (value) {
+      updateSongItems(removeDuplicateItems(songItems));
     }
-
-    setSongItems((current) => {
-      const nextItems = removeDuplicateItems(current);
-      const remainingIds = new Set(nextItems.map((item) => item.id));
-
-      setSongShapeIds((currentShapes) =>
-        Object.fromEntries(
-          Object.entries(currentShapes).filter(([itemId]) =>
-            remainingIds.has(itemId),
-          ),
-        ),
-      );
-
-      return nextItems;
-    });
   }
 
   function replaceSongChord(itemId: string, newSymbol: string) {
@@ -205,18 +190,6 @@ function App() {
               <span>精簡總覽與移調</span>
             </button>
           </div>
-                <span className="main-navigation__divider" aria-hidden="true" />
-
-            <button
-              type="button"
-              className={`main-navigation__single${
-                mode === "score" ? " is-active" : ""
-              }`}
-              onClick={() => setMode("score")}
-            >
-              簡譜製作
-            </button>
-
         </nav>
 
         {mode === "single" && <SingleChordSearch />}
@@ -230,7 +203,6 @@ function App() {
             selectedShapeIds={songShapeIds}
             onShapeChange={selectSongShape}
             onReplaceChord={replaceSongChord}
-
           />
         )}
 
@@ -241,9 +213,6 @@ function App() {
             onApplyTransposition={applyOverviewTransposition}
           />
         )}
-
-      {mode === "score" && <ScoreEditor />}
-
 
       </main>
 

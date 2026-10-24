@@ -1365,13 +1365,6 @@ select:focus-visible {
   text-align: center;
 }
 
-.score-current-count {
-  display: block;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
 @media (pointer: coarse) {
   .arranged-chord__remove {
     display: grid;
