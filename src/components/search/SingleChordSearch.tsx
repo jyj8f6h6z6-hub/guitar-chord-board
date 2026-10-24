@@ -1,44 +1,33 @@
-import { useRef, useState } from "react";
-import type { FormEvent } from "react";
+import { useState } from "react";
 import {
-  ACCIDENTAL_OPTIONS,
   CHORD_TYPE_OPTIONS,
-  ROOT_NOTES,
-  buildChordSymbol,
+  ROOT_KEY_OPTIONS,
+  formatNoteLabel,
 } from "../../data/chordTypes";
-import type { Accidental, RootNote } from "../../data/chordTypes";
+import type { RootNotation } from "../../data/chordTypes";
 import { getChordTheory } from "../../services/chordTheory";
 import { ChordCard } from "../chord/ChordCard";
 
+const NOTATION_OPTIONS: readonly { value: RootNotation; label: string }[] = [
+  { value: "common", label: "常用" },
+  { value: "sharp", label: "♯" },
+  { value: "flat", label: "♭" },
+];
+
 export function SingleChordSearch() {
-  const [rootNote, setRootNote] = useState<RootNote>("C");
-  const [accidental, setAccidental] = useState<Accidental>("");
+  const [pitchClass, setPitchClass] = useState(0);
+  const [notation, setNotation] = useState<RootNotation>("common");
   const [chordType, setChordType] = useState("");
-  const [selectedChord, setSelectedChord] = useState("C");
-  const resultRef = useRef<HTMLDivElement>(null);
 
-  const previewChord = buildChordSymbol(rootNote, accidental, chordType);
+  const rootOption =
+    ROOT_KEY_OPTIONS.find((option) => option.pitchClass === pitchClass) ??
+    ROOT_KEY_OPTIONS[0];
+  const rootSymbol = rootOption[notation];
+  const selectedChord = `${rootSymbol}${chordType}`;
   const selectedType =
-    CHORD_TYPE_OPTIONS.find((option) => option.suffix === chordType) ?? CHORD_TYPE_OPTIONS[0];
+    CHORD_TYPE_OPTIONS.find((option) => option.suffix === chordType) ??
+    CHORD_TYPE_OPTIONS[0];
   const theory = getChordTheory(selectedChord);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSelectedChord(previewChord);
-
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
-    if (window.matchMedia("(max-width: 700px)").matches) {
-      window.requestAnimationFrame(() => {
-        resultRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    }
-  }
 
   return (
     <section className="workspace workspace--single" aria-labelledby="single-mode-title">
@@ -48,88 +37,85 @@ export function SingleChordSearch() {
             <h2 id="single-mode-title">查單一和弦</h2>
           </div>
 
-          <form className="search-panel chord-builder" onSubmit={handleSubmit}>
-            <div className="chord-builder__controls" aria-label="和弦選擇">
-              <label className="chord-select-field" htmlFor="chord-root">
+          <div className="search-panel chord-builder ux-builder">
+            <fieldset className="ux-fieldset">
+              <legend className="ux-legend">
                 <span>根音</span>
-                <select
-                  id="chord-root"
-                  value={rootNote}
-                  onChange={(event) => setRootNote(event.target.value as RootNote)}
-                >
-                  {ROOT_NOTES.map((note) => (
-                    <option key={note} value={note}>
-                      {note}
-                    </option>
-                  ))}
-                </select>
-              </label>
 
-              <label className="chord-select-field" htmlFor="chord-accidental">
-                <span>升降記號</span>
-                <select
-                  id="chord-accidental"
-                  value={accidental}
-                  onChange={(event) => setAccidental(event.target.value as Accidental)}
-                >
-                  {ACCIDENTAL_OPTIONS.map((option) => (
-                    <option key={option.value || "natural"} value={option.value}>
+                <span className="ux-segmented" role="group" aria-label="升降記號寫法">
+                  {NOTATION_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={notation === option.value ? "is-active" : ""}
+                      aria-pressed={notation === option.value}
+                      onClick={() => setNotation(option.value)}
+                    >
                       {option.label}
-                    </option>
+                    </button>
                   ))}
-                </select>
-              </label>
+                </span>
+              </legend>
 
-              <label
-                className="chord-select-field chord-select-field--type"
-                htmlFor="chord-type"
-              >
+              <div className="ux-key-grid">
+                {ROOT_KEY_OPTIONS.map((option) => {
+                  const isActive = option.pitchClass === pitchClass;
+                  const isBlackKey = option.sharp !== option.flat;
+
+                  return (
+                    <button
+                      key={option.pitchClass}
+                      type="button"
+                      className={`ux-key${isBlackKey ? " is-black" : ""}${
+                        isActive ? " is-active" : ""
+                      }`}
+                      aria-pressed={isActive}
+                      onClick={() => setPitchClass(option.pitchClass)}
+                    >
+                      {formatNoteLabel(option[notation])}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <fieldset className="ux-fieldset">
+              <legend className="ux-legend">
                 <span>和弦類型</span>
-                <select
-                  id="chord-type"
-                  value={chordType}
-                  onChange={(event) => setChordType(event.target.value)}
-                >
-                  {CHORD_TYPE_OPTIONS.map((option) => (
-                    <option key={option.suffix || "major"} value={option.suffix}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+              </legend>
 
-            <div className="chord-builder__summary" aria-live="polite">
-              <div className="chord-builder__selection">
-                <span>目前選擇</span>
-                <strong>{previewChord}</strong>
-                <small>{selectedType.label}</small>
+              <div className="ux-type-grid">
+                {CHORD_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option.suffix || "major"}
+                    type="button"
+                    className={`ux-type${
+                      option.suffix === chordType ? " is-active" : ""
+                    }`}
+                    aria-pressed={option.suffix === chordType}
+                    onClick={() => setChordType(option.suffix)}
+                  >
+                    {option.short}
+                  </button>
+                ))}
               </div>
+            </fieldset>
 
-              <div className="chord-feeling">
-                <span>聽感描述</span>
-                <p>{selectedType.description}</p>
-              </div>
-            </div>
-
-            <button type="submit" className="primary-button chord-builder__submit">
-              顯示按法
-            </button>
-
-            <p className="chord-builder__note">
-              根音是 C、D、E、F、G、A、B；自然音表示不加 ♯ 或 ♭。若資料庫尚未收錄某個組合，右側仍會顯示組成音並提示尚未收錄吉他按法。
+            <p className="ux-feeling" aria-live="polite">
+              <strong>{selectedType.label}</strong>
+              <span>{selectedType.description}</span>
             </p>
-          </form>
+          </div>
         </div>
 
-        <div ref={resultRef} className="single-result-region" aria-live="polite">
+        <div className="single-result-region" aria-live="polite">
           {theory.valid ? (
             <div className="single-result">
               <ChordCard symbol={selectedChord} />
             </div>
           ) : (
             <div className="notice notice--error" role="alert">
-              無法辨識「{selectedChord}」。請改選其他根音、升降記號或和弦類型。
+              無法辨識「{selectedChord}」。請改選其他根音或和弦類型。
             </div>
           )}
         </div>

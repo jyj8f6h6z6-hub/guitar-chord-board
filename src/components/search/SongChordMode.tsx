@@ -24,6 +24,9 @@ import { useEffect, useState } from "react";
 import { CHORD_TYPE_OPTIONS, ROOT_NOTES } from "../../data/chordTypes";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
+import { ShareButton } from "../ShareButton";
+import { ProgressionPresets } from "./ProgressionPresets";
+import { createId } from "../../utils/createId";
 
 
 interface SongChordModeProps {
@@ -34,7 +37,8 @@ interface SongChordModeProps {
   selectedShapeIds: Readonly<Record<string, string>>;
   onShapeChange: (itemId: string, shapeId: string) => void;
   onReplaceChord: (itemId: string, newSymbol: string) => void;
-
+  onApplyProgression: (symbols: string[]) => void;
+  title: string;
 }
 
 interface ActiveDrag {
@@ -86,7 +90,7 @@ function getChordRoot(symbol: string): string | null {
 
 function createSongChordItem(symbol: string): SongChordItem {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     symbol,
   };
 }
@@ -256,7 +260,8 @@ export function SongChordMode({
   selectedShapeIds,
   onShapeChange,
   onReplaceChord,
-
+  onApplyProgression,
+  title,
 }: SongChordModeProps) {
 
   const [paletteAccidentalMode, setPaletteAccidentalMode] =
@@ -456,6 +461,11 @@ export function SongChordMode({
         <h2 id="song-mode-title">建立和弦編排</h2>
       </div>
 
+      <ProgressionPresets
+        hasItems={items.length > 0}
+        onApply={onApplyProgression}
+      />
+
 
 
       <DndContext
@@ -544,7 +554,10 @@ export function SongChordMode({
                 <h3 id="arrangement-title">歌曲順序</h3>
               </div>
 
-              <span>{items.length} 個和弦</span>
+              <div className="song-arranger__count">
+                <span>{items.length} 個和弦</span>
+                <ShareButton items={items} title={title} />
+              </div>
             </div>
 
             <SortableContext
@@ -689,7 +702,7 @@ export function SongChordMode({
         </section>
       ) : (
         <div className="selected-chord-editor-placeholder">
-          點選和弦編排區中的和弦，可查看按法並修改和弦類型。
+          點一下上方編排區的和弦，就能查看按法、切換把位，並改成其他和弦類型。
         </div>
       )}
     </section>

@@ -4,6 +4,7 @@ import {
   getShapeVariantLabel,
 } from "../../data/chordShapes";
 import { getChordTheory } from "../../services/chordTheory";
+import { isAudioSupported, playChordShape } from "../../services/audio";
 import { ChordDiagram } from "./ChordDiagram";
 
 interface ChordCardProps {
@@ -73,6 +74,17 @@ export function ChordCard({
       ) : (
         <div className="empty-diagram">
           <span>可解析組成音，但尚未收錄吉他按法</span>
+        </div>
+      )}
+      {!compact && shape && isAudioSupported() && (
+        <div className="chord-card__actions">
+          <button
+            type="button"
+            className="listen-button"
+            onClick={() => playChordShape(shape)}
+          >
+            <span aria-hidden="true">▶</span> 試聽 {symbol}
+          </button>
         </div>
       )}
       {!compact && shapes.length > 1 && (

@@ -7,17 +7,22 @@ import {
 } from "../../services/chordTranspose";
 import type { SongChordItem } from "../../types/chord";
 import { ChordCard } from "../chord/ChordCard";
+import { ShareButton } from "../ShareButton";
 
 interface SongChordOverviewProps {
   items: readonly SongChordItem[];
   selectedShapeIds: Readonly<Record<string, string>>;
   onApplyTransposition: (symbols: readonly string[]) => void;
+  title: string;
+  onTitleChange: (title: string) => void;
 }
 
 export function SongChordOverview({
   items,
   selectedShapeIds,
   onApplyTransposition,
+  title,
+  onTitleChange,
 }: SongChordOverviewProps) {
   const [sourceKey, setSourceKey] = useState("C");
   const [targetKey, setTargetKey] = useState("D");
@@ -64,6 +69,38 @@ export function SongChordOverview({
       <div className="workspace__intro">
         <p className="eyebrow">和弦編排・第二步</p>
         <h2 id="overview-mode-title">總覽與移調</h2>
+      </div>
+
+      <div className="print-only print-header">
+        <h1>{title.trim() || "和弦總覽"}</h1>
+        <p>
+          {displayedSymbols.join("  |  ")}
+        </p>
+      </div>
+
+      <div className="overview-toolbar">
+        <label className="overview-title-field">
+          <span>歌曲名稱（選填，會顯示在列印與分享連結）</span>
+          <input
+            type="text"
+            value={title}
+            maxLength={60}
+            placeholder="例如：晴天"
+            onChange={(event) => onTitleChange(event.target.value)}
+          />
+        </label>
+
+        <div className="overview-toolbar__actions">
+          <ShareButton items={items} title={title} />
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => window.print()}
+            disabled={items.length === 0}
+          >
+            列印／存成 PDF
+          </button>
+        </div>
       </div>
 
       <section

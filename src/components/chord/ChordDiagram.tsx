@@ -1,3 +1,4 @@
+import { useLeftHanded } from "../../services/persistence";
 import type { ChordShape } from "../../types/chord";
 
 interface ChordDiagramProps {
@@ -14,6 +15,9 @@ const FRET_COUNT = 5;
 export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDiagramProps) {
   const width = compact ? 136 : 220;
   const symbol = displaySymbol ?? shape.symbol;
+  const leftHanded = useLeftHanded();
+  // 左手模式：六弦到一弦由右往左排列，等同把圖左右鏡射。
+  const xs = leftHanded ? [...STRING_X].reverse() : [...STRING_X];
 
   return (
     <svg
@@ -32,7 +36,7 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
       )}
 
       {shape.frets.map((fret, stringIndex) => {
-        const x = STRING_X[stringIndex];
+        const x = xs[stringIndex];
         const marker = fret === "x" ? "×" : fret === 0 ? "○" : null;
 
         return marker ? (
@@ -77,8 +81,8 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
 
       {shape.barres?.map((barre, index) => {
         const y = fretToY(barre.fret, shape.baseFret);
-        const startX = STRING_X[barre.fromString - 1];
-        const endX = STRING_X[barre.toString - 1];
+        const startX = xs[barre.fromString - 1];
+        const endX = xs[barre.toString - 1];
 
         if (y === null || startX === undefined || endX === undefined) {
           return null;
@@ -110,10 +114,10 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
 
         return (
           <g key={`dot-${stringIndex}`}>
-            <circle cx={STRING_X[stringIndex]} cy={y} r="12" className="diagram-dot" />
+            <circle cx={xs[stringIndex]} cy={y} r="12" className="diagram-dot" />
             {finger && (
               <text
-                x={STRING_X[stringIndex]}
+                x={xs[stringIndex]}
                 y={y + 4}
                 textAnchor="middle"
                 className="diagram-finger"
@@ -128,7 +132,7 @@ export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDia
       {(["E", "A", "D", "G", "B", "e"] as const).map((name, index) => (
         <text
           key={name}
-          x={STRING_X[index]}
+          x={xs[index]}
           y="242"
           textAnchor="middle"
           className="diagram-string-name"
