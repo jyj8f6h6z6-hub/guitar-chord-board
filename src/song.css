@@ -756,3 +756,152 @@ body.is-performing {
 .print-header p {
   font-weight: 700;
 }
+
+/* 貼上其他節歌詞 */
+.verse-fill {
+  margin: 18px 0;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.verse-fill__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.verse-fill__heading h3 {
+  margin: 0;
+}
+
+.verse-fill__steps {
+  margin: 0;
+  padding-left: 1.3em;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.verse-fill__steps code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--accent-strong);
+}
+
+.verse-fill__targets {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.verse-fill__targets legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.verse-fill__paste {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.verse-fill__paste textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+}
+
+.verse-fill__warning {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+}
+
+.verse-fill__preview h4 {
+  margin: 0 0 8px;
+}
+
+.verse-fill__verse {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.verse-fill__line {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.verse-fill__line.has-warning {
+  border-color: var(--accent);
+}
+
+.verse-fill__line-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.verse-fill__line-label em {
+  color: var(--accent-strong);
+  font-style: normal;
+}
+
+.verse-fill__cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.verse-fill__cell {
+  width: 92px;
+  display: grid;
+  gap: 3px;
+}
+
+.verse-fill__cell small {
+  min-height: 1.2em;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.verse-fill__cell input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.verse-fill__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
