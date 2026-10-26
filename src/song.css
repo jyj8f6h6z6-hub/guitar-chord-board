@@ -905,3 +905,28 @@ body.is-performing {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* 手機：避開瀏覽器狀態列／瀏覽器工具列／瀏覽器底部手勢區 */
+.app-shell {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.perform {
+  height: 100vh;
+  height: 100dvh;
+  bottom: auto;
+}
+
+.perform__bar {
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-left: calc(14px + env(safe-area-inset-left));
+  padding-right: calc(14px + env(safe-area-inset-right));
+}
+
+.perform__footer {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  padding-left: calc(14px + env(safe-area-inset-left));
+  padding-right: calc(14px + env(safe-area-inset-right));
+}
