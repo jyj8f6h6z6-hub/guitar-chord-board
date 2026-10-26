@@ -1,0 +1,758 @@
+/* ===== 0.9.0：歌單列、分行編排、簡譜風格譜面、演奏模式 ===== */
+
+/* 歌單列 */
+.song-bar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.song-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.song-bar__select,
+.song-bar__title {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.song-bar__select select,
+.song-bar__title input {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.song-bar__select select {
+  max-width: 220px;
+}
+
+.song-bar__title {
+  flex: 1 1 200px;
+}
+
+.song-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.song-bar__more {
+  position: relative;
+}
+
+.song-bar__more summary {
+  min-height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.song-bar__more summary::-webkit-details-marker {
+  display: none;
+}
+
+.song-bar__menu {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  display: grid;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-3);
+  box-shadow: var(--shadow);
+}
+
+.song-bar__menu button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.song-bar__menu button:hover {
+  background: var(--surface-2);
+}
+
+.song-bar__menu .is-danger {
+  color: var(--danger);
+}
+
+.song-bar__warning {
+  padding: 10px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  background: rgba(255, 123, 123, 0.1);
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+
+.song-bar__message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.share-banner__actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.ghost-button.is-active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: rgba(233, 185, 73, 0.13);
+}
+
+/* 分行編排 */
+.song-lines {
+  display: grid;
+  gap: 12px;
+}
+
+.song-line {
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.song-line.is-active {
+  border-color: rgba(233, 185, 73, 0.55);
+  border-left-color: var(--accent);
+}
+
+.song-line.is-chorus {
+  border-left-color: #ff8a65;
+  background: rgba(255, 138, 101, 0.06);
+}
+
+.line-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+}
+
+.line-head__number {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.line-head__section,
+.line-head__custom {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.line-head__custom {
+  width: 8em;
+}
+
+.line-head__inherit {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.line-head__actions {
+  margin-left: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.line-head__actions button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.line-head__actions button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.line-head__actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.line-drop-zone {
+  min-height: 84px;
+}
+
+.line-drop-zone .arranged-chord-list {
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.song-line .arranged-chord {
+  width: 92px;
+  display: grid;
+  gap: 4px;
+}
+
+.arranged-chord__top {
+  position: relative;
+}
+
+.song-line .arranged-chord__main {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 6px;
+}
+
+.song-line .arranged-chord__main strong {
+  font-size: 1.2rem;
+}
+
+.arranged-chord__lyric {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  touch-action: auto;
+}
+
+.arranged-chord__lyric:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.arranged-chord.has-bar::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: 6px;
+  height: 44px;
+  border-right: 2px solid var(--muted);
+}
+
+.chord-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* 簡譜風格譜面 */
+.lead-sheet {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.lead-line {
+  display: grid;
+  grid-template-columns: 4.6em 1fr;
+  gap: 8px;
+  padding: 8px 6px;
+  border-left: 4px solid transparent;
+  border-radius: 8px;
+  break-inside: avoid;
+}
+
+.lead-line.is-chorus {
+  border-left-color: #ff8a65;
+  background: rgba(255, 138, 101, 0.07);
+}
+
+.lead-line.is-clickable {
+  cursor: pointer;
+}
+
+.lead-line.is-marked {
+  outline: 3px solid var(--accent);
+  background: rgba(233, 185, 73, 0.14);
+}
+
+.lead-line__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 1em;
+}
+
+.section-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.section-badge--chorus {
+  background: #ff8a65;
+  color: #1b1008;
+}
+
+.lead-line__marker {
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.lead-line__cells {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 6px;
+}
+
+.lead-line__empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.lead-cell {
+  min-width: 3.6em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.lead-cell__chord {
+  font-size: 1.15em;
+  line-height: 1.2;
+  color: var(--accent-strong);
+}
+
+.lead-cell__lyric {
+  min-height: 1.4em;
+  font-size: 1em;
+  line-height: 1.4;
+  color: var(--text);
+  white-space: pre;
+}
+
+.lead-cell__diagram {
+  line-height: 0;
+}
+
+.lead-cell__diagram--none {
+  color: var(--muted);
+  line-height: 1.4;
+  font-size: 0.8rem;
+}
+
+.lead-cell__diagram .chord-diagram {
+  max-width: 100%;
+  height: auto;
+}
+
+.lead-bar {
+  align-self: stretch;
+  width: 0;
+  margin: 2px 4px;
+  border-right: 2px solid var(--muted);
+}
+
+.lead-sheet--large {
+  padding: 18px 12px 40vh;
+  border: 0;
+  background: transparent;
+  font-size: 1em;
+}
+
+.lead-sheet--large .lead-line {
+  grid-template-columns: 1fr;
+  padding: 10px 10px;
+}
+
+.lead-sheet--large .lead-line__label {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.lead-sheet--large .lead-cell {
+  min-width: 3em;
+}
+
+.lead-sheet--large .lead-cell__lyric {
+  font-size: 1.1em;
+}
+
+/* 總覽：卡片排版 */
+.segmented-control {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segmented-control button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.segmented-control button.is-active {
+  background: rgba(233, 185, 73, 0.18);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.cards-by-line {
+  display: grid;
+  gap: 18px;
+}
+
+.cards-line.is-chorus {
+  padding-left: 10px;
+  border-left: 4px solid #ff8a65;
+}
+
+.cards-line .section-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.song-overview-lyric {
+  display: block;
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.95rem;
+  min-height: 1.4em;
+}
+
+/* 演奏模式 */
+body.is-performing {
+  overflow: hidden;
+}
+
+.perform {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #0b0d13;
+  color: #f7f7fb;
+}
+
+.perform__bar,
+.perform__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #151823;
+  border-bottom: 1px solid var(--line);
+}
+
+.perform__footer {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+  justify-content: space-between;
+}
+
+.perform__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+
+.perform__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.perform__btn {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.perform__btn:disabled {
+  opacity: 0.35;
+}
+
+.perform__btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.perform__btn--exit {
+  border-color: rgba(255, 123, 123, 0.6);
+  color: var(--danger);
+}
+
+.perform__hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.perform__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 列印 */
+@media print {
+  .song-bar,
+  .perform,
+  .chord-toolbar,
+  .notice {
+    display: none !important;
+  }
+
+  .lead-sheet {
+    padding: 0;
+    border: 0;
+    background: #ffffff;
+    gap: 4px;
+  }
+
+  .lead-line {
+    border-left-color: transparent;
+    background: transparent !important;
+    padding: 4px 2px;
+  }
+
+  .lead-line.is-chorus {
+    border-left: 4px solid #111111;
+  }
+
+  .lead-cell__chord {
+    color: #111111;
+  }
+
+  .lead-cell__lyric {
+    color: #111111;
+  }
+
+  .lead-bar {
+    border-right-color: #111111;
+  }
+
+  .section-badge,
+  .section-badge--chorus {
+    background: #ffffff !important;
+    border: 1.5px solid #111111;
+    color: #111111 !important;
+  }
+
+  .section-badge--chorus {
+    background: #111111 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .cards-line {
+    break-inside: avoid;
+  }
+
+  .song-overview-lyric {
+    color: #111111;
+  }
+}
+
+@media (max-width: 640px) {
+  .song-line .arranged-chord {
+    width: 80px;
+  }
+
+  .lead-line {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-line__label {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .song-bar__actions {
+    margin-left: 0;
+  }
+
+  .perform__bar {
+    flex-wrap: wrap;
+  }
+
+  .perform__title {
+    order: -1;
+    flex-basis: 100%;
+  }
+}
+
+.line-head__section {
+  width: auto;
+  min-width: 8em;
+}
+
+.line-head__custom {
+  width: 8em;
+}
+
+.song-bar__select select {
+  width: auto;
+}
+
+/* 0.9.1 */
+.song-bar__key {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.song-bar__key select {
+  min-height: 40px;
+  width: auto;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.arranged-chord__lyric {
+  resize: none;
+  line-height: 1.35;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  overflow: hidden;
+}
+
+.lead-cell__lyrics {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.perform__key {
+  margin-left: 12px;
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+}
+
+.print-header p {
+  font-weight: 700;
+}
+
+/* 0.9.1 */
+.song-bar__key {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.song-bar__key select {
+  min-height: 40px;
+  width: auto;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.arranged-chord__lyric {
+  resize: none;
+  line-height: 1.35;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  overflow: hidden;
+}
+
+.lead-cell__lyrics {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.perform__key {
+  margin-left: 12px;
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+}
+
+.print-header p {
+  font-weight: 700;
+}

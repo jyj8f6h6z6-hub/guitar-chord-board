@@ -4,175 +4,72 @@ import packageJson from "../package.json";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
+import { PerformView } from "./components/song/PerformView";
+import { SongBar } from "./components/song/SongBar";
 import "./mode3.css";
 
-import {
-  DEFAULT_SONG_SYMBOLS,
-  createSongState,
-  loadSavedSong,
-  parseSharedSong,
-  saveSong,
-  setLeftHanded,
-  useLeftHanded,
-} from "./services/persistence";
-import type { SongState } from "./services/persistence";
-import type { AppMode, SongChordItem } from "./types/chord";
+import { useSongLibrary } from "./hooks/useSongLibrary";
+import { setLeftHanded, useLeftHanded } from "./services/persistence";
+import { applySymbols, linesFromSymbols } from "./services/songModel";
+import { hasSharedSongInUrl, readSharedSongFromUrl } from "./services/songStorage";
+import type { AppMode } from "./types/chord";
 
 const REPOSITORY_URL =
   "https://github.com/jyj8f6h6z6-hub/guitar-chord-board";
 
-interface InitialState {
-  song: SongState;
-  fromShare: boolean;
-}
-
-function loadInitialState(): InitialState {
-  const shared = parseSharedSong(window.location.search);
-
-  if (shared) {
-    return { song: shared, fromShare: true };
-  }
-
-  return {
-    song: loadSavedSong() ?? createSongState(DEFAULT_SONG_SYMBOLS),
-    fromShare: false,
-  };
-}
-
-function removeDuplicateItems(
-  items: readonly SongChordItem[],
-): SongChordItem[] {
-  const seen = new Set<string>();
-
-  return items.filter((item) => {
-    if (seen.has(item.symbol)) {
-      return false;
-    }
-
-    seen.add(item.symbol);
-    return true;
-  });
-}
-
-function pruneShapeIds(
-  shapeIds: Record<string, string>,
-  items: readonly SongChordItem[],
-): Record<string, string> {
-  const remainingIds = new Set(items.map((item) => item.id));
-
-  return Object.fromEntries(
-    Object.entries(shapeIds).filter(([itemId]) => remainingIds.has(itemId)),
-  );
+function stripShareParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("s");
+  url.searchParams.delete("chords");
+  url.searchParams.delete("title");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function App() {
-  const [initial] = useState(loadInitialState);
+  const library = useSongLibrary();
+  const { song, draft, openDraft } = library;
   const [mode, setMode] = useState<AppMode>(
-    initial.fromShare ? "overview" : "single",
+    hasSharedSongInUrl(window.location.search) ? "overview" : "single",
   );
-  const [songItems, setSongItems] = useState<SongChordItem[]>(
-    initial.song.items,
-  );
-  const [removeDuplicates, setRemoveDuplicates] = useState(
-    initial.song.removeDuplicates,
-  );
-  const [songShapeIds, setSongShapeIds] = useState<Record<string, string>>(
-    initial.song.shapeIds,
-  );
-  const [songTitle, setSongTitle] = useState(initial.song.title);
-  // 開啟分享連結時，先不覆蓋使用者原本儲存的編排，等到有編輯才開始保存。
-  const [persistEnabled, setPersistEnabled] = useState(!initial.fromShare);
+  const [shareFailed, setShareFailed] = useState(false);
   const leftHanded = useLeftHanded();
 
+  // 分享連結：開成「草稿」，使用者按「存入我的歌單」才會保存。
   useEffect(() => {
-    if (!persistEnabled) {
+    if (!hasSharedSongInUrl(window.location.search)) {
       return;
     }
 
-    saveSong({
-      items: songItems,
-      shapeIds: songShapeIds,
-      removeDuplicates,
-      title: songTitle,
-    });
-  }, [persistEnabled, songItems, songShapeIds, removeDuplicates, songTitle]);
+    let cancelled = false;
 
-  function updateSongItems(nextItems: SongChordItem[]) {
-    const normalizedItems = removeDuplicates
-      ? removeDuplicateItems(nextItems)
-      : nextItems;
+    void readSharedSongFromUrl(window.location.search).then((shared) => {
+      if (cancelled) return;
 
-    setPersistEnabled(true);
-    setSongItems(normalizedItems);
-    setSongShapeIds((current) => pruneShapeIds(current, normalizedItems));
-  }
+      if (shared) {
+        openDraft(shared);
+      } else {
+        setShareFailed(true);
+        setMode("single");
+      }
 
-  function updateRemoveDuplicates(value: boolean) {
-    setPersistEnabled(true);
-    setRemoveDuplicates(value);
-
-    if (value) {
-      updateSongItems(removeDuplicateItems(songItems));
-    }
-  }
-
-  function replaceSongChord(itemId: string, newSymbol: string) {
-    setPersistEnabled(true);
-    setSongItems((current) => {
-      const replacedItems = current.map((item) =>
-        item.id === itemId ? { ...item, symbol: newSymbol } : item,
-      );
-
-      return removeDuplicates
-        ? removeDuplicateItems(replacedItems)
-        : replacedItems;
+      stripShareParams();
     });
 
-    setSongShapeIds((current) => {
-      const next = { ...current };
-      delete next[itemId];
-      return next;
-    });
+    return () => {
+      cancelled = true;
+    };
+  }, [openDraft]);
+
+  function applyProgression(symbols: string[], lineSize = 4) {
+    library.updateSong((current) => ({ ...current, lines: linesFromSymbols(symbols, lineSize) }));
   }
 
-  function selectSongShape(itemId: string, shapeId: string) {
-    setPersistEnabled(true);
-    setSongShapeIds((current) => ({
-      ...current,
-      [itemId]: shapeId,
-    }));
+  function applyTransposition(symbols: readonly string[], newKey: string) {
+    library.updateSong((current) => ({ ...applySymbols(current, symbols), key: newKey }));
   }
 
-  function applyOverviewTransposition(symbols: readonly string[]) {
-    setPersistEnabled(true);
-    setSongItems((current) =>
-      current.map((item, index) => ({
-        ...item,
-        symbol: symbols[index] ?? item.symbol,
-      })),
-    );
-
-    setSongShapeIds({});
-  }
-
-  function applyProgression(symbols: string[]) {
-    const next = createSongState(symbols, [], removeDuplicates);
-
-    setPersistEnabled(true);
-    updateSongItems(next.items);
-    setSongShapeIds({});
-  }
-
-  function updateSongTitle(title: string) {
-    setPersistEnabled(true);
-    setSongTitle(title);
-  }
-
-  function leaveSharedView() {
-    // 回到不帶分享參數的網址，會重新載入本機保存的編排。
-    window.location.assign(
-      `${window.location.origin}${window.location.pathname}`,
-    );
+  function changeKey(key: string) {
+    library.updateSong((current) => ({ ...current, key }));
   }
 
   return (
@@ -264,48 +161,66 @@ function App() {
               <span className="nav-label-long">精簡總覽與移調</span>
               <span className="nav-label-short">總覽移調</span>
             </button>
+
+            <span className="arrangement-navigation__arrow" aria-hidden="true">
+              →
+            </span>
+
+            <button
+              type="button"
+              className={`arrangement-navigation__step${
+                mode === "perform" ? " is-active" : ""
+              }`}
+              onClick={() => setMode("perform")}
+            >
+              <span className="arrangement-navigation__number">③</span>
+              <span className="nav-label-long">演奏模式</span>
+              <span className="nav-label-short">演奏</span>
+            </button>
           </div>
         </nav>
 
-        {initial.fromShare && !persistEnabled && mode !== "single" && (
-          <div className="share-banner" role="status">
-            <span>你正在檢視分享連結的和弦編排。開始編輯後，會取代你本機儲存的內容。</span>
-            <button type="button" className="ghost-button" onClick={leaveSharedView}>
-              回到我的編排
+        {shareFailed && mode === "single" && (
+          <div className="share-banner" role="alert">
+            <span>這個分享連結無法讀取（可能不完整或已損壞）。</span>
+            <button type="button" className="ghost-button" onClick={() => setShareFailed(false)}>
+              知道了
             </button>
           </div>
         )}
+
+        {mode !== "single" && <SongBar library={library} showShare={mode !== "perform"} />}
 
         {mode === "single" && <SingleChordSearch />}
 
         {mode === "song" && (
           <SongChordMode
-            items={songItems}
-            onItemsChange={updateSongItems}
-            removeDuplicates={removeDuplicates}
-            onRemoveDuplicatesChange={updateRemoveDuplicates}
-            selectedShapeIds={songShapeIds}
-            onShapeChange={selectSongShape}
-            onReplaceChord={replaceSongChord}
+            song={song}
+            onChange={library.updateSong}
             onApplyProgression={applyProgression}
-            title={songTitle}
           />
         )}
 
         {mode === "overview" && (
           <SongChordOverview
-            items={songItems}
-            selectedShapeIds={songShapeIds}
-            onApplyTransposition={applyOverviewTransposition}
-            title={songTitle}
-            onTitleChange={updateSongTitle}
+            song={song}
+            onApplyTransposition={applyTransposition}
+            onKeyChange={changeKey}
+            onPerform={() => setMode("perform")}
           />
+        )}
+
+        {mode === "perform" && (
+          <>
+            <div className="notice">演奏模式已開啟。按「✕ 結束」或 Esc 可離開。</div>
+            <PerformView song={song} onExit={() => setMode("overview")} />
+          </>
         )}
       </main>
 
       <footer>
         <span>Guitar Chord Board · {packageJson.version}</span>
-        <span>編排內容只儲存在你的瀏覽器</span>
+        <span>{draft ? "分享的歌曲尚未存入" : "歌曲只儲存在你的瀏覽器"}</span>
       </footer>
     </div>
   );

@@ -5,6 +5,8 @@ interface ChordDiagramProps {
   shape: ChordShape;
   compact?: boolean;
   displaySymbol?: string;
+  /** 指定像素寬度（譜面用的小圖）；未指定時依 compact 決定 */
+  width?: number;
 }
 
 const STRING_X = [40, 68, 96, 124, 152, 180] as const;
@@ -12,8 +14,8 @@ const GRID_TOP = 54;
 const FRET_HEIGHT = 34;
 const FRET_COUNT = 5;
 
-export function ChordDiagram({ shape, compact = false, displaySymbol }: ChordDiagramProps) {
-  const width = compact ? 136 : 220;
+export function ChordDiagram({ shape, compact = false, displaySymbol, width: widthProp }: ChordDiagramProps) {
+  const width = widthProp ?? (compact ? 136 : 220);
   const symbol = displaySymbol ?? shape.symbol;
   const leftHanded = useLeftHanded();
   // 左手模式：六弦到一弦由右往左排列，等同把圖左右鏡射。

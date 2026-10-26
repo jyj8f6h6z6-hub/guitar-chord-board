@@ -10,14 +10,14 @@ import {
 
 interface ProgressionPresetsProps {
   hasItems: boolean;
-  onApply: (symbols: string[]) => void;
+  onApply: (symbols: string[], lineSize?: number) => void;
 }
 
 export function ProgressionPresets({ hasItems, onApply }: ProgressionPresetsProps) {
   const [key, setKey] = useState("C");
 
   function apply(preset: ProgressionPreset) {
-    if (hasItems && !window.confirm("要用這組進行取代目前的和弦編排嗎？")) {
+    if (hasItems && !window.confirm("要用這組進行取代目前這首歌的和弦（含歌詞）嗎？可以用「復原」找回。")) {
       return;
     }
 
@@ -26,6 +26,7 @@ export function ProgressionPresets({ hasItems, onApply }: ProgressionPresetsProp
 
     onApply(
       preset.chords.map((chord) => transposeChordSymbol(chord, semitones, preferFlats)),
+      preset.lineSize,
     );
   }
 

@@ -1,55 +1,52 @@
 import { useEffect, useRef, useState } from "react";
-import { buildShareUrl } from "../services/persistence";
-import type { SongChordItem } from "../types/chord";
+import { buildShareUrl, encodeShareToken, isShareTokenTooLong } from "../services/songStorage";
+import { countItems } from "../services/songModel";
+import type { Song } from "../types/song";
 
 interface ShareButtonProps {
-  items: readonly SongChordItem[];
-  title: string;
+  song: Song;
 }
 
-type ShareStatus = "idle" | "copied" | "manual";
+type ShareStatus = "idle" | "copied" | "manual" | "error";
 
-export function ShareButton({ items, title }: ShareButtonProps) {
+export function ShareButton({ song }: ShareButtonProps) {
   const [status, setStatus] = useState<ShareStatus>("idle");
   const [url, setUrl] = useState("");
+  const [tooLong, setTooLong] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isEmpty = countItems(song) === 0;
 
   useEffect(() => {
-    if (status !== "copied") {
-      return;
-    }
-
+    if (status !== "copied") return;
     const timer = window.setTimeout(() => setStatus("idle"), 2200);
     return () => window.clearTimeout(timer);
   }, [status]);
 
   useEffect(() => {
-    if (status === "manual") {
-      inputRef.current?.select();
-    }
+    if (status === "manual") inputRef.current?.select();
   }, [status]);
 
   async function handleShare() {
-    const shareUrl = buildShareUrl(items, title);
-    setUrl(shareUrl);
-
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setStatus("copied");
+      const token = await encodeShareToken(song);
+      const shareUrl = buildShareUrl(token);
+      setUrl(shareUrl);
+      setTooLong(isShareTokenTooLong(token));
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setStatus("copied");
+      } catch {
+        setStatus("manual");
+      }
     } catch {
-      // 剪貼簿不可用時，改顯示網址讓使用者手動複製。
-      setStatus("manual");
+      setStatus("error");
     }
   }
 
   return (
     <div className="share-control">
-      <button
-        type="button"
-        className="ghost-button"
-        onClick={handleShare}
-        disabled={items.length === 0}
-      >
+      <button type="button" className="ghost-button" onClick={handleShare} disabled={isEmpty}>
         {status === "copied" ? "✓ 已複製連結" : "複製分享連結"}
       </button>
 
@@ -63,6 +60,14 @@ export function ShareButton({ items, title }: ShareButtonProps) {
           aria-label="分享連結，請手動複製"
           onFocus={(event) => event.currentTarget.select()}
         />
+      )}
+
+      {status === "error" && <small className="share-control__warning">產生連結失敗，請改用「匯出」檔案分享。</small>}
+
+      {tooLong && status !== "error" && (
+        <small className="share-control__warning">
+          連結很長，部分通訊軟體可能會截斷；建議改用「匯出」檔案分享。
+        </small>
       )}
     </div>
   );

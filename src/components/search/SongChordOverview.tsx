@@ -1,48 +1,83 @@
 import { useMemo, useState } from "react";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   KEY_OPTIONS,
   getTranspositionSemitones,
   keyPrefersFlats,
   transposeChordSymbol,
 } from "../../services/chordTranspose";
-import type { SongChordItem } from "../../types/chord";
+import { allItems, countItems, effectiveSections } from "../../services/songModel";
+import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
-import { ShareButton } from "../ShareButton";
+import { LeadSheet } from "../song/LeadSheet";
 
-interface SongChordOverviewProps {
-  items: readonly SongChordItem[];
-  selectedShapeIds: Readonly<Record<string, string>>;
-  onApplyTransposition: (symbols: readonly string[]) => void;
-  title: string;
-  onTitleChange: (title: string) => void;
+type OverviewLayout = "lead" | "cards" | "unique";
+
+const LAYOUT_LABELS: Record<OverviewLayout, string> = {
+  lead: "簡譜風格",
+  cards: "和弦圖卡片",
+  unique: "不重複和弦",
+};
+
+function keyDisplay(key: string): string {
+  return KEY_OPTIONS.find((option) => option.value === key)?.label ?? key;
 }
 
-export function SongChordOverview({
-  items,
-  selectedShapeIds,
-  onApplyTransposition,
-  title,
-  onTitleChange,
-}: SongChordOverviewProps) {
-  const [sourceKey, setSourceKey] = useState("C");
+interface SongChordOverviewProps {
+  song: Song;
+  onApplyTransposition: (symbols: readonly string[], newKey: string) => void;
+  onKeyChange: (key: string) => void;
+  onPerform: () => void;
+}
+
+export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onPerform }: SongChordOverviewProps) {
+  const sourceKey = song.key ?? "C";
+  const setSourceKey = onKeyChange;
   const [targetKey, setTargetKey] = useState("D");
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
+  const [showDiagrams, setShowDiagrams] = usePersistentState("guitar-chord-board:show-diagrams", true);
+
+  const items = useMemo(() => allItems(song), [song]);
+  const total = countItems(song);
+  const sections = effectiveSections(song);
 
   const transposedSymbols = useMemo(() => {
     const semitones = getTranspositionSemitones(sourceKey, targetKey);
     const preferFlats = keyPrefersFlats(targetKey);
-
-    return items.map((item) =>
-      transposeChordSymbol(item.symbol, semitones, preferFlats),
-    );
+    return items.map((item) => transposeChordSymbol(item.symbol, semitones, preferFlats));
   }, [items, sourceKey, targetKey]);
 
-  const displayedSymbols = isPreviewing
-    ? transposedSymbols
-    : items.map((item) => item.symbol);
+  const symbolById = useMemo(() => {
+    if (!isPreviewing) return undefined;
+    return Object.fromEntries(items.map((item, index) => [item.id, transposedSymbols[index]]));
+  }, [isPreviewing, items, transposedSymbols]);
 
-  function previewTransposition() {
-    setIsPreviewing(true);
+  const displayed = (itemId: string, fallback: string) => symbolById?.[itemId] ?? fallback;
+
+  const uniqueEntries = useMemo(() => {
+    const seen = new Map<string, { symbol: string; shapeId?: string; count: number }>();
+
+    for (const item of items) {
+      const symbol = displayed(item.id, item.symbol);
+      const existing = seen.get(symbol);
+
+      if (existing) {
+        existing.count += 1;
+      } else {
+        seen.set(symbol, { symbol, shapeId: isPreviewing ? undefined : item.shapeId, count: 1 });
+      }
+    }
+
+    return [...seen.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, symbolById, isPreviewing]);
+
+  function applyTransposition() {
+    if (!isPreviewing || sourceKey === targetKey) return;
+
+    onApplyTransposition(transposedSymbols, targetKey);
+    setIsPreviewing(false);
   }
 
   function restoreOriginalKey() {
@@ -50,63 +85,56 @@ export function SongChordOverview({
     setIsPreviewing(false);
   }
 
-  function applyTransposition() {
-    if (!isPreviewing || sourceKey === targetKey) {
-      return;
-    }
-
-    onApplyTransposition(transposedSymbols);
-
-    setSourceKey(targetKey);
-    setIsPreviewing(false);
-  }
-
   return (
-    <section
-      className="workspace workspace--overview"
-      aria-labelledby="overview-mode-title"
-    >
+    <section className="workspace workspace--overview" aria-labelledby="overview-mode-title">
       <div className="workspace__intro">
         <p className="eyebrow">和弦編排・第二步</p>
         <h2 id="overview-mode-title">總覽與移調</h2>
       </div>
 
       <div className="print-only print-header">
-        <h1>{title.trim() || "和弦總覽"}</h1>
-        <p>
-          {displayedSymbols.join("  |  ")}
-        </p>
+        <h1>{song.title.trim() || "和弦譜"}</h1>
+        {(isPreviewing ? targetKey : song.key) && (
+          <p>
+            調號：{keyDisplay(isPreviewing ? targetKey : (song.key as string))}
+            {isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}
+          </p>
+        )}
       </div>
 
       <div className="overview-toolbar">
-        <label className="overview-title-field">
-          <span>歌曲名稱（選填，會顯示在列印與分享連結）</span>
-          <input
-            type="text"
-            value={title}
-            maxLength={60}
-            placeholder="例如：晴天"
-            onChange={(event) => onTitleChange(event.target.value)}
-          />
-        </label>
+        <div className="segmented-control" role="group" aria-label="總覽排版">
+          {(Object.keys(LAYOUT_LABELS) as OverviewLayout[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={layout === key ? "is-active" : ""}
+              aria-pressed={layout === key}
+              onClick={() => setLayout(key)}
+            >
+              {LAYOUT_LABELS[key]}
+            </button>
+          ))}
+        </div>
+
+        {layout === "lead" && (
+          <label className="checkbox-label">
+            <input type="checkbox" checked={showDiagrams} onChange={(event) => setShowDiagrams(event.target.checked)} />
+            顯示和弦按法（熟悉後可關閉）
+          </label>
+        )}
 
         <div className="overview-toolbar__actions">
-          <ShareButton items={items} title={title} />
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => window.print()}
-            disabled={items.length === 0}
-          >
+          <button type="button" className="ghost-button" onClick={onPerform} disabled={total === 0}>
+            進入演奏模式
+          </button>
+          <button type="button" className="ghost-button" onClick={() => window.print()} disabled={total === 0}>
             列印／存成 PDF
           </button>
         </div>
       </div>
 
-      <section
-        className="overview-transpose-panel"
-        aria-labelledby="overview-transpose-title"
-      >
+      <section className="overview-transpose-panel" aria-labelledby="overview-transpose-title">
         <div className="overview-transpose-panel__heading">
           <div>
             <p className="eyebrow">移調</p>
@@ -126,7 +154,6 @@ export function SongChordOverview({
               <span aria-hidden="true">♫</span>
               原調
             </span>
-
             <select
               id="overview-source-key"
               value={sourceKey}
@@ -152,7 +179,6 @@ export function SongChordOverview({
               <span aria-hidden="true">⇄</span>
               目標調
             </span>
-
             <select
               id="overview-target-key"
               value={targetKey}
@@ -171,28 +197,17 @@ export function SongChordOverview({
         </div>
 
         <div className="overview-transpose-actions">
-          <button
-            type="button"
-            className="primary-button"
-            onClick={previewTransposition}
-            disabled={items.length === 0}
-          >
+          <button type="button" className="primary-button" onClick={() => setIsPreviewing(true)} disabled={total === 0}>
             預覽移調
           </button>
-
           <button
             type="button"
             className="secondary-button transpose-apply-button"
             onClick={applyTransposition}
-            disabled={
-              items.length === 0 ||
-              !isPreviewing ||
-              sourceKey === targetKey
-            }
+            disabled={total === 0 || !isPreviewing || sourceKey === targetKey}
           >
             套用到和弦編排區
           </button>
-
           <button
             type="button"
             className="secondary-button transpose-reset-button"
@@ -205,40 +220,59 @@ export function SongChordOverview({
       </section>
 
       <div className="song-overview-summary" aria-live="polite">
-        <strong>{items.length} 個和弦</strong>
-
+        <strong>
+          {song.lines.length} 行・{total} 個和弦
+        </strong>
         <span>
-          {isPreviewing
-            ? "目前顯示移調預覽，尚未修改第一步的和弦編排。"
-            : "內容與第一步建立的和弦編排同步。"}
+          {isPreviewing ? "目前顯示移調預覽，尚未修改第一步的和弦編排。" : "內容與第一步建立的和弦編排同步。"}
         </span>
       </div>
 
-      {items.length > 0 ? (
-        <div className="song-overview-grid">
-          {items.map((item, index) => (
-            <div className="song-overview-item" key={item.id}>
-              <span
-                className="song-overview-number"
-                aria-label={`第 ${index + 1} 個和弦`}
-              >
-                {index + 1}
-              </span>
+      {total === 0 ? (
+        <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
+      ) : layout === "lead" ? (
+        <LeadSheet song={song} symbols={symbolById} showDiagrams={showDiagrams} />
+      ) : layout === "cards" ? (
+        <div className="cards-by-line">
+          {song.lines.map((line, lineIndex) => {
+            const section = sections[lineIndex];
 
+            return (
+              <div key={line.id} className={`cards-line${section.kind === "chorus" ? " is-chorus" : ""}`}>
+                {section.badge && (
+                  <span className={`section-badge${section.kind === "chorus" ? " section-badge--chorus" : ""}`}>
+                    {section.badge}
+                  </span>
+                )}
+
+                <div className="song-overview-grid">
+                  {line.items.map((item) => (
+                    <div className="song-overview-item" key={item.id}>
+                      <ChordCard
+                        symbol={displayed(item.id, item.symbol)}
+                        compact
+                        eyebrow={isPreviewing ? "移調預覽" : "歌曲和弦"}
+                        selectedShapeId={isPreviewing ? undefined : item.shapeId}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="song-overview-grid">
+          {uniqueEntries.map((entry) => (
+            <div className="song-overview-item" key={entry.symbol}>
               <ChordCard
-                symbol={displayedSymbols[index]}
+                symbol={entry.symbol}
                 compact
-                eyebrow={isPreviewing ? "移調預覽" : "歌曲和弦"}
-                selectedShapeId={
-                  isPreviewing ? undefined : selectedShapeIds[item.id]
-                }
+                eyebrow={`出現 ${entry.count} 次`}
+                selectedShapeId={entry.shapeId}
               />
             </div>
           ))}
-        </div>
-      ) : (
-        <div className="notice">
-          尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。
         </div>
       )}
     </section>

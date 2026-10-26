@@ -4,6 +4,8 @@ export interface ProgressionPreset {
   hint: string;
   /** 以 C 大調為基準的和弦，套用時會移調到選定的調。 */
   chords: readonly string[];
+  /** 幾個和弦排成一行；沒有指定就全部放同一行 */
+  lineSize?: number;
 }
 
 export const PROGRESSION_PRESETS: readonly ProgressionPreset[] = [
@@ -16,6 +18,7 @@ export const PROGRESSION_PRESETS: readonly ProgressionPreset[] = [
     id: "blues",
     label: "12 小節藍調",
     hint: "Ⅰ7 · Ⅳ7 · Ⅴ7",
+    lineSize: 4,
     chords: ["C7", "C7", "C7", "C7", "F7", "F7", "C7", "C7", "G7", "F7", "C7", "G7"],
   },
 ];
