@@ -1217,3 +1217,8 @@ body.is-performing {
     color: #111111;
   }
 }
+
+/* 1.1.1：有小圖的欄位，和弦名稱與歌詞仍與同一行其他欄對齊（圖往上長） */
+.lead-line__cells {
+  align-items: flex-end;
+}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { SongLibrary } from "../../hooks/useSongLibrary";
 import { KEY_OPTIONS } from "../../services/chordTranspose";
 import { BEAT_CHOICES, MAX_TITLE_LENGTH, TIME_SIGNATURES } from "../../services/songModel";
 import { exportSongsToJson, parseImportedJson } from "../../services/songStorage";
+import type { SongLibrary } from "../../hooks/useSongLibrary";
 import { ShareButton } from "../ShareButton";
 
 function safeFileName(name: string): string {
