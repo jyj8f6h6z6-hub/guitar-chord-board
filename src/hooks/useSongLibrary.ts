@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { createDefaultSong, createSong } from "../services/songModel";
+import { createDefaultSong } from "../services/songModel";
 import { loadLibrary, saveLibrary } from "../services/songStorage";
 import type { Library } from "../services/songStorage";
 import type { Song } from "../types/song";
@@ -202,7 +202,7 @@ export function useSongLibrary(): SongLibrary {
         return prev;
       }
 
-      const stored = createSong(prev.draft.title, prev.draft.lines, prev.draft.key, prev.draft.palette);
+      const stored: Song = { ...prev.draft, id: createId(), updatedAt: Date.now() };
       return {
         ...prev,
         draft: null,

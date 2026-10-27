@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { KEY_OPTIONS } from "../../services/chordTranspose";
-import { MAX_TITLE_LENGTH } from "../../services/songModel";
+import { BEAT_CHOICES, MAX_TITLE_LENGTH, TIME_SIGNATURES } from "../../services/songModel";
 import { exportSongsToJson, parseImportedJson } from "../../services/songStorage";
 import type { SongLibrary } from "../../hooks/useSongLibrary";
 import { ShareButton } from "../ShareButton";
@@ -158,6 +158,56 @@ export function SongBar({ library, showShare = true }: SongBarProps) {
             {KEY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="song-bar__key">
+          <span>大調／小調</span>
+          <select
+            value={song.mode === "minor" ? "minor" : "major"}
+            onChange={(event) => {
+              const mode = event.target.value === "minor" ? ("minor" as const) : undefined;
+              library.updateSong((current) => ({ ...current, mode }));
+            }}
+          >
+            <option value="major">大調</option>
+            <option value="minor">小調</option>
+          </select>
+        </label>
+
+        <label className="song-bar__key">
+          <span>拍號</span>
+          <select
+            value={song.timeSignature ?? ""}
+            onChange={(event) => {
+              const timeSignature = event.target.value || undefined;
+              library.updateSong((current) => ({ ...current, timeSignature }));
+            }}
+          >
+            <option value="">未設定</option>
+            {TIME_SIGNATURES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="song-bar__key" title="沒有個別設定拍數的和弦，都用這個拍數（以拍號分子為單位）">
+          <span>預設拍數</span>
+          <select
+            value={song.defaultBeats ?? ""}
+            onChange={(event) => {
+              const defaultBeats = event.target.value ? Number(event.target.value) : undefined;
+              library.updateSong((current) => ({ ...current, defaultBeats }));
+            }}
+          >
+            <option value="">未設定</option>
+            {BEAT_CHOICES.map((value) => (
+              <option key={value} value={value}>
+                {value} 拍
               </option>
             ))}
           </select>

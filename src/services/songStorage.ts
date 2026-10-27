@@ -9,6 +9,8 @@ import {
   MAX_LABEL_LENGTH,
   MAX_LINES,
   MAX_PALETTE,
+  TIME_SIGNATURES,
+  isValidBeats,
   MAX_TITLE_LENGTH,
   createDefaultSong,
   createLine,
@@ -54,6 +56,8 @@ interface SerializedChord {
   symbol: string;
   lyric?: string;
   bar?: boolean;
+  nobar?: boolean;
+  beats?: number;
   shape?: string;
 }
 
@@ -66,6 +70,9 @@ interface SerializedLine {
 export interface SerializedSong {
   title: string;
   key?: string;
+  mode?: "minor";
+  ts?: string;
+  beats?: number;
   palette?: string[];
   lines: SerializedLine[];
 }
@@ -82,6 +89,9 @@ export function serializeSong(song: Song): SerializedSong {
   return {
     title: song.title,
     ...(song.key ? { key: song.key } : {}),
+    ...(song.mode === "minor" ? { mode: "minor" as const } : {}),
+    ...(song.timeSignature ? { ts: song.timeSignature } : {}),
+    ...(song.defaultBeats ? { beats: song.defaultBeats } : {}),
     ...(song.palette && song.palette.length > 0 ? { palette: song.palette } : {}),
     lines: song.lines.map((line) => ({
       ...(line.section ? { section: line.section } : {}),
@@ -90,6 +100,8 @@ export function serializeSong(song: Song): SerializedSong {
         symbol: item.symbol,
         ...(item.lyric ? { lyric: item.lyric } : {}),
         ...(item.bar ? { bar: true } : {}),
+        ...(item.noBar ? { nobar: true } : {}),
+        ...(item.beats ? { beats: item.beats } : {}),
         ...(item.shapeId ? { shape: item.shapeId } : {}),
       })),
     })),
@@ -106,7 +118,15 @@ export function sanitizeSong(raw: unknown): Song | null {
     return null;
   }
 
-  const source = raw as { title?: unknown; key?: unknown; palette?: unknown; lines?: unknown };
+  const source = raw as {
+    title?: unknown;
+    key?: unknown;
+    mode?: unknown;
+    ts?: unknown;
+    beats?: unknown;
+    palette?: unknown;
+    lines?: unknown;
+  };
 
   if (!Array.isArray(source.lines)) {
     return null;
@@ -148,6 +168,8 @@ export function sanitizeSong(raw: unknown): Song | null {
           symbol: chord.symbol,
           lyric: typeof chord.lyric === "string" ? normalizeLyric(chord.lyric) : "",
           bar: chord.bar === true,
+          ...(chord.nobar === true ? { noBar: true } : {}),
+          ...(isValidBeats(chord.beats) ? { beats: chord.beats } : {}),
           ...(typeof chord.shape === "string" && chord.shape.length <= 80
             ? { shapeId: chord.shape }
             : {}),
@@ -169,7 +191,21 @@ export function sanitizeSong(raw: unknown): Song | null {
     ? [...new Set(source.palette.filter(isValidSymbol))].slice(0, MAX_PALETTE)
     : undefined;
 
-  return createSong(asString(source.title, MAX_TITLE_LENGTH), lines, key, palette);
+  const song = createSong(asString(source.title, MAX_TITLE_LENGTH), lines, key, palette);
+
+  if (source.mode === "minor") {
+    song.mode = "minor";
+  }
+
+  if (typeof source.ts === "string" && (TIME_SIGNATURES as readonly string[]).includes(source.ts)) {
+    song.timeSignature = source.ts;
+  }
+
+  if (isValidBeats(source.beats)) {
+    song.defaultBeats = source.beats;
+  }
+
+  return song;
 }
 
 /* ---------- 歌單 ---------- */

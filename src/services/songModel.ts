@@ -27,6 +27,14 @@ export function createLine(
 }
 
 export const MAX_PALETTE = 40;
+export const TIME_SIGNATURES = ["2/4", "3/4", "4/4", "6/8", "12/8", "2/2", "3/8"] as const;
+export const BEAT_CHOICES = [0.5, 1, 1.5, 2, 3, 4, 6, 8] as const;
+export const MAX_BEATS = 32;
+
+/** 拍數只接受 0.25 的倍數（0.25～32）。 */
+export function isValidBeats(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0.25 && value <= MAX_BEATS && Math.abs(value * 4 - Math.round(value * 4)) < 1e-9;
+}
 
 export function createSong(title = "", lines?: SongLine[], key?: string, palette?: string[]): Song {
   return {
@@ -139,6 +147,97 @@ export function setLyric(song: Song, itemId: string, lyric: string): Song {
   return updateItem(song, itemId, { lyric: normalizeLyric(lyric) });
 }
 
+/** 每一小節有幾拍（取拍號的分子）；沒有設拍號時回傳 null。 */
+export function measureBeats(timeSignature: string | undefined): number | null {
+  const match = timeSignature?.match(/^(\d+)\/\d+$/);
+  return match ? Number(match[1]) : null;
+}
+
+export function itemBeats(song: Song, item: SongItem): number | undefined {
+  return item.beats ?? song.defaultBeats;
+}
+
+/** 依拍號與拍數算出的小節線：這一行每個和弦都有拍數時，累積滿一小節就在該和弦後畫線。 */
+export function autoBarIds(song: Song): Set<string> {
+  const result = new Set<string>();
+  const measure = measureBeats(song.timeSignature);
+
+  if (!measure) {
+    return result;
+  }
+
+  for (const line of song.lines) {
+    const beats = line.items.map((item) => itemBeats(song, item));
+
+    if (beats.length === 0 || beats.some((value) => value === undefined)) {
+      continue;
+    }
+
+    let total = 0;
+
+    line.items.forEach((item, index) => {
+      total += beats[index] as number;
+
+      if (total % measure === 0) {
+        result.add(item.id);
+      }
+    });
+  }
+
+  return result;
+}
+
+/** 實際要畫的小節線（自動＋手動，扣掉被取消的）。 */
+export function effectiveBarIds(song: Song): Set<string> {
+  const auto = autoBarIds(song);
+  const result = new Set<string>();
+
+  for (const item of allItems(song)) {
+    if (!item.noBar && (item.bar || auto.has(item.id))) {
+      result.add(item.id);
+    }
+  }
+
+  return result;
+}
+
+/** 切換這個和弦後面的小節線：已經有就取消（自動的記為取消），沒有就手動加上。 */
+export function toggleBar(song: Song, itemId: string): Song {
+  const location = locateItem(song, itemId);
+
+  if (!location) {
+    return song;
+  }
+
+  const hasBar = effectiveBarIds(song).has(itemId);
+
+  if (hasBar) {
+    return updateItem(song, itemId, { bar: false, noBar: autoBarIds(song).has(itemId) ? true : undefined });
+  }
+
+  return updateItem(song, itemId, { bar: true, noBar: undefined });
+}
+
+export function setBeats(song: Song, itemId: string, beats: number | undefined): Song {
+  return updateItem(song, itemId, { beats: beats !== undefined && isValidBeats(beats) ? beats : undefined });
+}
+
+/** 「D 大調 2/4」這樣的標題文字。 */
+export function songMeta(song: Song): string {
+  const parts: string[] = [];
+
+  if (song.key) {
+    const note = song.key.replace("#", "♯").replace(/b$/, "♭");
+    parts.push(`${note} ${song.mode === "minor" ? "小調" : "大調"}`);
+  }
+
+  if (song.timeSignature) {
+    parts.push(song.timeSignature);
+  }
+
+  return parts.join(" ");
+}
+
 export function setBar(song: Song, itemId: string, bar: boolean): Song {
   return updateItem(song, itemId, { bar });
 }
@@ -188,7 +287,10 @@ export function duplicateItem(song: Song, itemId: string): InsertResult | null {
     return null;
   }
 
-  const copy = createItem(location.item.symbol, { shapeId: location.item.shapeId });
+  const copy = createItem(location.item.symbol, {
+    shapeId: location.item.shapeId,
+    ...(location.item.beats ? { beats: location.item.beats } : {}),
+  });
   const lines = song.lines.map((line, lineIndex) => {
     if (lineIndex !== location.lineIndex) {
       return line;

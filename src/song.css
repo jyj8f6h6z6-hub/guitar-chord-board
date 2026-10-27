@@ -1069,3 +1069,151 @@ body.is-performing {
 .chord-toolbar--inline .ghost-button {
   min-height: 40px;
 }
+
+/* 1.1.0：拍數、和弦名稱排版、節編號、圖例 */
+.beat-picker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.beat-picker__label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-right: 2px;
+}
+
+.beat-picker button {
+  min-width: 36px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.beat-picker button.is-active {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.18);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.arranged-chord__beats {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.arranged-chord__beats.is-custom {
+  color: var(--accent-strong);
+}
+
+.chord-name sup,
+.chord-name sub {
+  line-height: 0;
+}
+
+.chord-acc {
+  font-size: 0.62em;
+  vertical-align: super;
+  margin-left: 0.04em;
+}
+
+.chord-sub {
+  font-size: 0.64em;
+  vertical-align: sub;
+  margin-left: 0.04em;
+  font-weight: 700;
+}
+
+.chord-slash {
+  margin: 0 0.04em;
+}
+
+/* 譜面：欄寬依拍數、靠左對齊，歌詞連成一條線 */
+.lead-line__cells {
+  gap: 4px 0;
+}
+
+.lead-line.is-numbered .lead-line__cells {
+  padding-left: 2.2em;
+}
+
+.lead-cell {
+  min-width: 0;
+  align-items: flex-start;
+  padding: 0;
+  text-align: left;
+}
+
+.lead-cell__chordrow {
+  align-self: stretch;
+  padding-right: 0.5em;
+  line-height: 1.3;
+}
+
+.lead-cell__chordrow.has-bar {
+  border-right: 1.5px solid var(--muted);
+  margin-right: 0.45em;
+}
+
+.lead-cell__lyrics {
+  align-items: flex-start;
+  padding-right: 0.3em;
+}
+
+.lead-cell__lyric {
+  position: relative;
+  letter-spacing: 0.03em;
+}
+
+.verse-no {
+  position: absolute;
+  right: 100%;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+.lead-sheet--large .lead-cell {
+  min-width: 0;
+}
+
+.lead-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lead-legend__item {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+@media print {
+  .lead-cell__chordrow.has-bar {
+    border-right-color: #111111;
+  }
+
+  .lead-legend {
+    border-bottom-color: #111111;
+    break-inside: avoid;
+  }
+
+  .verse-no {
+    color: #111111;
+  }
+}

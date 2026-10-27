@@ -6,10 +6,11 @@ import {
   keyPrefersFlats,
   transposeChordSymbol,
 } from "../../services/chordTranspose";
-import { allItems, countItems, effectiveSections } from "../../services/songModel";
+import { allItems, countItems, effectiveSections, songMeta } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
-import { LeadSheet } from "../song/LeadSheet";
+import { DIAGRAM_MODE_LABELS, LeadSheet } from "../song/LeadSheet";
+import type { DiagramMode } from "../song/LeadSheet";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
@@ -36,9 +37,10 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [targetKey, setTargetKey] = useState("D");
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
-  const [showDiagrams, setShowDiagrams] = usePersistentState("guitar-chord-board:show-diagrams", true);
+  const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
 
   const items = useMemo(() => allItems(song), [song]);
+  const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
   const total = countItems(song);
   const sections = effectiveSections(song);
 
@@ -94,9 +96,9 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
 
       <div className="print-only print-header">
         <h1>{song.title.trim() || "和弦譜"}</h1>
-        {(isPreviewing ? targetKey : song.key) && (
+        {printMeta && (
           <p>
-            調號：{keyDisplay(isPreviewing ? targetKey : (song.key as string))}
+            {printMeta}
             {isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}
           </p>
         )}
@@ -118,10 +120,20 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         </div>
 
         {layout === "lead" && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={showDiagrams} onChange={(event) => setShowDiagrams(event.target.checked)} />
-            顯示和弦按法（熟悉後可關閉）
-          </label>
+          <div className="segmented-control" role="group" aria-label="和弦按法圖">
+            {(Object.keys(DIAGRAM_MODE_LABELS) as DiagramMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={diagramMode === mode ? "is-active" : ""}
+                aria-pressed={diagramMode === mode}
+                onClick={() => setDiagramMode(mode)}
+                title={mode === "off" ? "熟悉之後可以關掉按法圖" : undefined}
+              >
+                {DIAGRAM_MODE_LABELS[mode]}
+              </button>
+            ))}
+          </div>
         )}
 
         <div className="overview-toolbar__actions">
@@ -231,7 +243,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
       {total === 0 ? (
         <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
       ) : layout === "lead" ? (
-        <LeadSheet song={song} symbols={symbolById} showDiagrams={showDiagrams} />
+        <LeadSheet song={song} symbols={symbolById} diagramMode={diagramMode} />
       ) : layout === "cards" ? (
         <div className="cards-by-line">
           {song.lines.map((line, lineIndex) => {

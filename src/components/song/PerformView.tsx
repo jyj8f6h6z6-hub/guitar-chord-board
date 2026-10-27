@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import type { Song } from "../../types/song";
-import { KEY_OPTIONS } from "../../services/chordTranspose";
-import { LeadSheet } from "./LeadSheet";
+import { songMeta } from "../../services/songModel";
+import { DIAGRAM_MODE_LABELS, LeadSheet } from "./LeadSheet";
+import type { DiagramMode } from "./LeadSheet";
 
-function keyLabel(key: string): string {
-  return KEY_OPTIONS.find((option) => option.value === key)?.label ?? key;
-}
 
 interface PerformViewProps {
   song: Song;
@@ -22,8 +20,8 @@ interface WakeLockSentinelLike {
 }
 
 export function PerformView({ song, onExit }: PerformViewProps) {
-  const [scaleIndex, setScaleIndex] = usePersistentState("guitar-chord-board:perform-scale", 2);
-  const [showDiagrams, setShowDiagrams] = usePersistentState("guitar-chord-board:perform-diagrams", true);
+  const [scaleIndex, setScaleIndex] = usePersistentState<number>("guitar-chord-board:perform-scale", 2);
+  const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:perform-diagram-mode", "first");
   const [markedLineId, setMarkedLineId] = useState<string | null>(null);
   const [wake, setWake] = useState<WakeStatus>("off");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -129,7 +127,7 @@ export function PerformView({ song, onExit }: PerformViewProps) {
 
         <strong className="perform__title">
           {song.title.trim() || "和弦譜"}
-          {song.key && <span className="perform__key">調：{keyLabel(song.key)}</span>}
+          {songMeta(song) && <span className="perform__key">{songMeta(song)}</span>}
         </strong>
 
         <div className="perform__tools">
@@ -153,11 +151,11 @@ export function PerformView({ song, onExit }: PerformViewProps) {
           </button>
           <button
             type="button"
-            className={`perform__btn${showDiagrams ? " is-active" : ""}`}
-            aria-pressed={showDiagrams}
-            onClick={() => setShowDiagrams(!showDiagrams)}
+            className={`perform__btn${diagramMode !== "off" ? " is-active" : ""}`}
+            onClick={() => setDiagramMode(diagramMode === "first" ? "legend" : diagramMode === "legend" ? "off" : "first")}
+            title="切換：首次出現小圖／上方圖例／不顯示"
           >
-            按法圖
+            按法：{DIAGRAM_MODE_LABELS[diagramMode]}
           </button>
           {canFullscreen && (
             <button type="button" className="perform__btn" onClick={toggleFullscreen}>
@@ -170,7 +168,7 @@ export function PerformView({ song, onExit }: PerformViewProps) {
       <div className="perform__body" style={{ fontSize: `${scale}rem` }}>
         <LeadSheet
           song={song}
-          showDiagrams={showDiagrams}
+          diagramMode={diagramMode}
           diagramWidth={Math.round(72 * scale)}
           large
           markedLineId={markedLineId}

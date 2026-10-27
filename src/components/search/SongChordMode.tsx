@@ -30,13 +30,16 @@ import {
   MAX_ITEMS_TOTAL,
   MAX_LABEL_LENGTH,
   MAX_LYRIC_LENGTH,
+  BEAT_CHOICES,
   MAX_LYRIC_ROWS,
   addLine,
   addPaletteChord,
   countItems,
   duplicateItem,
   duplicateLine,
+  effectiveBarIds,
   effectiveSections,
+  itemBeats,
   insertChord,
   locateItem,
   mergeLineUp,
@@ -48,7 +51,8 @@ import {
   removePaletteChord,
   uniqueSymbols,
   replaceSymbol,
-  setBar,
+  setBeats,
+  toggleBar,
   setLyric,
   setSection,
   setShape,
@@ -178,6 +182,8 @@ function PaletteChord({ symbol, onAdd, scope }: { symbol: string; onAdd: (symbol
 function SortableSongChord({
   item,
   lineId,
+  hasBar,
+  beats,
   isSelected,
   onSelect,
   onRemove,
@@ -185,6 +191,8 @@ function SortableSongChord({
 }: {
   item: SongItem;
   lineId: string;
+  hasBar: boolean;
+  beats: number | undefined;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
@@ -200,12 +208,15 @@ function SortableSongChord({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`arranged-chord${isSelected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}${
-        item.bar ? " has-bar" : ""
+        hasBar ? " has-bar" : ""
       }`}
     >
       <div className="arranged-chord__top">
         <button type="button" className="arranged-chord__main" onClick={onSelect} {...attributes} {...listeners}>
           <strong>{item.symbol}</strong>
+          {beats !== undefined && (
+            <small className={`arranged-chord__beats${item.beats ? " is-custom" : ""}`}>{beats}拍</small>
+          )}
         </button>
 
         <button
@@ -379,6 +390,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   );
 
   const sections = effectiveSections(song);
+  const bars = effectiveBarIds(song);
   const total = countItems(song);
   const selected = selectedItemId ? locateItem(song, selectedItemId) : null;
   const selectedItem = selected?.item ?? null;
@@ -738,6 +750,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                                 key={item.id}
                                 item={item}
                                 lineId={line.id}
+                                hasBar={bars.has(item.id)}
+                                beats={itemBeats(song, item)}
                                 isSelected={selectedItemId === item.id}
                                 onSelect={() => selectItem(item.id)}
                                 onRemove={() => removeChord(item.id)}
@@ -770,9 +784,10 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
             </button>
             <button
               type="button"
-              className={`ghost-button${selectedItem.bar ? " is-active" : ""}`}
-              aria-pressed={selectedItem.bar}
-              onClick={() => onChange((s) => setBar(s, selectedItem.id, !selectedItem.bar))}
+              className={`ghost-button${bars.has(selectedItem.id) ? " is-active" : ""}`}
+              aria-pressed={bars.has(selectedItem.id)}
+              title="這個和弦後面的小節線；有設拍號與拍數時會自動畫，按一下可取消"
+              onClick={() => onChange((s) => toggleBar(s, selectedItem.id))}
             >
               ｜ 小節線
             </button>
@@ -787,7 +802,29 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
             <button type="button" className="ghost-button" onClick={() => removeChord(selectedItem.id)}>
               刪除
             </button>
-          <button
+          <span className="beat-picker" role="group" aria-label="這個和弦的拍數">
+              <span className="beat-picker__label">拍數</span>
+              <button
+                type="button"
+                className={selectedItem.beats === undefined ? "is-active" : ""}
+                onClick={() => onChange((s) => setBeats(s, selectedItem.id, undefined))}
+                title="使用歌曲的預設拍數"
+              >
+                預設{song.defaultBeats ? `(${song.defaultBeats})` : ""}
+              </button>
+              {BEAT_CHOICES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={selectedItem.beats === value ? "is-active" : ""}
+                  aria-pressed={selectedItem.beats === value}
+                  onClick={() => onChange((s) => setBeats(s, selectedItem.id, value))}
+                >
+                  {value === 0.5 ? "½" : value === 1.5 ? "1½" : value}
+                </button>
+              ))}
+            </span>
+            <button
               type="button"
               className="ghost-button"
               onClick={() => document.getElementById("selected-chord-editor-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}

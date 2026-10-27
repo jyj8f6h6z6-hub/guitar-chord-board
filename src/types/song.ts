@@ -27,8 +27,12 @@ export interface SongItem {
   id: string;
   symbol: string;
   lyric: string;
-  /** 這個和弦之後是否畫小節線 */
+  /** 手動指定：這個和弦之後畫小節線 */
   bar: boolean;
+  /** 取消自動算出來的小節線 */
+  noBar?: boolean;
+  /** 這個和弦持續幾拍（以拍號分子為單位）；未設定則用歌曲的預設拍數 */
+  beats?: number;
   /** 使用者選擇的按法 id，未選則用預設第一個 */
   shapeId?: string;
 }
@@ -48,6 +52,12 @@ export interface Song {
   key?: string;
   /** 這首歌預先設定的和弦（待選區的「本曲和弦」），例如 C/G */
   palette?: string[];
+  /** 大調或小調，只影響標題顯示 */
+  mode?: "major" | "minor";
+  /** 拍號，例如 2/4 */
+  timeSignature?: string;
+  /** 每個和弦沒有個別設定時的預設拍數 */
+  defaultBeats?: number;
   lines: SongLine[];
   updatedAt: number;
 }
