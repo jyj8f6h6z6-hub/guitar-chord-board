@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import type { Song } from "../../types/song";
 import { songMeta } from "../../services/songModel";
-import { DIAGRAM_MODE_LABELS, LeadSheet } from "./LeadSheet";
-import type { DiagramMode } from "./LeadSheet";
+import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "./LeadSheet";
+import type { DiagramMode, DiagramSize } from "./LeadSheet";
 
 
 interface PerformViewProps {
@@ -11,6 +11,8 @@ interface PerformViewProps {
   onExit: () => void;
 }
 
+const NEXT_MODE: Record<DiagramMode, DiagramMode> = { first: "all", all: "legend", legend: "off", off: "first" };
+const NEXT_SIZE: Record<DiagramSize, DiagramSize> = { medium: "large", large: "xlarge", xlarge: "medium" };
 const SCALES = [0.8, 1, 1.25, 1.5, 1.8, 2.2] as const;
 
 type WakeStatus = "unsupported" | "on" | "off";
@@ -21,6 +23,7 @@ interface WakeLockSentinelLike {
 
 export function PerformView({ song, onExit }: PerformViewProps) {
   const [scaleIndex, setScaleIndex] = usePersistentState<number>("guitar-chord-board:perform-scale", 2);
+  const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:perform-diagram-mode", "first");
   const [markedLineId, setMarkedLineId] = useState<string | null>(null);
   const [wake, setWake] = useState<WakeStatus>("off");
@@ -152,11 +155,21 @@ export function PerformView({ song, onExit }: PerformViewProps) {
           <button
             type="button"
             className={`perform__btn${diagramMode !== "off" ? " is-active" : ""}`}
-            onClick={() => setDiagramMode(diagramMode === "first" ? "legend" : diagramMode === "legend" ? "off" : "first")}
-            title="切換：首次出現小圖／上方圖例／不顯示"
+            onClick={() => setDiagramMode(NEXT_MODE[diagramMode])}
+            title="切換：首次出現小圖／每個和弦都顯示／上方圖例／不顯示"
           >
             按法：{DIAGRAM_MODE_LABELS[diagramMode]}
           </button>
+          {diagramMode !== "off" && (
+            <button
+              type="button"
+              className="perform__btn"
+              onClick={() => setDiagramSize(NEXT_SIZE[diagramSize])}
+              title="切換和弦圖大小：標準／大／特大"
+            >
+              圖：{DIAGRAM_SIZES[diagramSize].label}
+            </button>
+          )}
           {canFullscreen && (
             <button type="button" className="perform__btn" onClick={toggleFullscreen}>
               {isFullscreen ? "退出全螢幕" : "全螢幕"}
@@ -169,7 +182,7 @@ export function PerformView({ song, onExit }: PerformViewProps) {
         <LeadSheet
           song={song}
           diagramMode={diagramMode}
-          diagramWidth={Math.round(72 * scale)}
+          diagramWidth={Math.round(DIAGRAM_SIZES[diagramSize].width * scale)}
           large
           markedLineId={markedLineId}
           onLineClick={toggleLine}

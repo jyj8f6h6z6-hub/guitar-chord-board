@@ -5,12 +5,21 @@ import type { Song, SongItem } from "../../types/song";
 import { ChordDiagram } from "../chord/ChordDiagram";
 import { ChordName } from "../chord/ChordName";
 
-export type DiagramMode = "legend" | "first" | "off";
+export type DiagramMode = "legend" | "first" | "all" | "off";
+export type DiagramSize = "medium" | "large" | "xlarge";
 
 export const DIAGRAM_MODE_LABELS: Record<DiagramMode, string> = {
   legend: "上方圖例",
   first: "首次出現小圖",
+  all: "每個和弦都顯示",
   off: "不顯示",
+};
+
+/** 和弦圖大小（像素寬）；視力不好時可選大一點。 */
+export const DIAGRAM_SIZES: Record<DiagramSize, { label: string; width: number }> = {
+  medium: { label: "標準", width: 72 },
+  large: { label: "大", width: 96 },
+  xlarge: { label: "特大", width: 128 },
 };
 
 /** 1 拍的欄寬（em）；歌詞比這個寬時，欄位會自動撐開。 */
@@ -152,7 +161,7 @@ export function LeadSheet({
                 const beats = itemBeats(song, item);
                 const lyricRows = (item.lyric || "").split("\n");
                 const rowCount = Math.max(rows, 1);
-                const showDiagram = diagramMode === "first" && firstIds.has(item.id);
+                const showDiagram = diagramMode === "all" || (diagramMode === "first" && firstIds.has(item.id));
                 const entry: DiagramEntry = {
                   key: item.id,
                   symbol,

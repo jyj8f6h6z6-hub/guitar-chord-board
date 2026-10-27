@@ -9,8 +9,8 @@ import {
 import { allItems, countItems, effectiveSections, songMeta } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
-import { DIAGRAM_MODE_LABELS, LeadSheet } from "../song/LeadSheet";
-import type { DiagramMode } from "../song/LeadSheet";
+import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
+import type { DiagramMode, DiagramSize } from "../song/LeadSheet";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
@@ -37,6 +37,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [targetKey, setTargetKey] = useState("D");
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
+  const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
 
   const items = useMemo(() => allItems(song), [song]);
@@ -131,6 +132,22 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
                 title={mode === "off" ? "熟悉之後可以關掉按法圖" : undefined}
               >
                 {DIAGRAM_MODE_LABELS[mode]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {layout === "lead" && diagramMode !== "off" && (
+          <div className="segmented-control" role="group" aria-label="和弦圖大小">
+            {(Object.keys(DIAGRAM_SIZES) as DiagramSize[]).map((size) => (
+              <button
+                key={size}
+                type="button"
+                className={diagramSize === size ? "is-active" : ""}
+                aria-pressed={diagramSize === size}
+                onClick={() => setDiagramSize(size)}
+              >
+                圖{DIAGRAM_SIZES[size].label}
               </button>
             ))}
           </div>
@@ -243,7 +260,12 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
       {total === 0 ? (
         <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
       ) : layout === "lead" ? (
-        <LeadSheet song={song} symbols={symbolById} diagramMode={diagramMode} />
+        <LeadSheet
+          song={song}
+          symbols={symbolById}
+          diagramMode={diagramMode}
+          diagramWidth={DIAGRAM_SIZES[diagramSize].width}
+        />
       ) : layout === "cards" ? (
         <div className="cards-by-line">
           {song.lines.map((line, lineIndex) => {
