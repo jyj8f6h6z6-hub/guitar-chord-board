@@ -8,6 +8,7 @@ import {
   MAX_ITEMS_TOTAL,
   MAX_LABEL_LENGTH,
   MAX_LINES,
+  MAX_PALETTE,
   MAX_TITLE_LENGTH,
   createDefaultSong,
   createLine,
@@ -65,6 +66,7 @@ interface SerializedLine {
 export interface SerializedSong {
   title: string;
   key?: string;
+  palette?: string[];
   lines: SerializedLine[];
 }
 
@@ -80,6 +82,7 @@ export function serializeSong(song: Song): SerializedSong {
   return {
     title: song.title,
     ...(song.key ? { key: song.key } : {}),
+    ...(song.palette && song.palette.length > 0 ? { palette: song.palette } : {}),
     lines: song.lines.map((line) => ({
       ...(line.section ? { section: line.section } : {}),
       ...(line.customLabel ? { label: line.customLabel } : {}),
@@ -103,7 +106,7 @@ export function sanitizeSong(raw: unknown): Song | null {
     return null;
   }
 
-  const source = raw as { title?: unknown; key?: unknown; lines?: unknown };
+  const source = raw as { title?: unknown; key?: unknown; palette?: unknown; lines?: unknown };
 
   if (!Array.isArray(source.lines)) {
     return null;
@@ -162,7 +165,11 @@ export function sanitizeSong(raw: unknown): Song | null {
       ? source.key
       : undefined;
 
-  return createSong(asString(source.title, MAX_TITLE_LENGTH), lines, key);
+  const palette = Array.isArray(source.palette)
+    ? [...new Set(source.palette.filter(isValidSymbol))].slice(0, MAX_PALETTE)
+    : undefined;
+
+  return createSong(asString(source.title, MAX_TITLE_LENGTH), lines, key, palette);
 }
 
 /* ---------- 歌單 ---------- */

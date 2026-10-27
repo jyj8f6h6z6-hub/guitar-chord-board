@@ -46,6 +46,8 @@ export interface Song {
   title: string;
   /** 調號（C、C#、D…），未設定則不顯示 */
   key?: string;
+  /** 這首歌預先設定的和弦（待選區的「本曲和弦」），例如 C/G */
+  palette?: string[];
   lines: SongLine[];
   updatedAt: number;
 }

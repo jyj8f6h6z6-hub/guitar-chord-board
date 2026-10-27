@@ -1,4 +1,4 @@
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import type { CollisionDetection, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
   DndContext,
   DragOverlay,
@@ -32,6 +32,7 @@ import {
   MAX_LYRIC_LENGTH,
   MAX_LYRIC_ROWS,
   addLine,
+  addPaletteChord,
   countItems,
   duplicateItem,
   duplicateLine,
@@ -44,6 +45,8 @@ import {
   moveLine,
   removeItem,
   removeLine,
+  removePaletteChord,
+  uniqueSymbols,
   replaceSymbol,
   setBar,
   setLyric,
@@ -55,6 +58,7 @@ import type { Song, SongItem, SongLine } from "../../types/song";
 import { SECTION_KINDS, SECTION_LABELS } from "../../types/song";
 import type { SectionKind } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
+import { isValidSymbol } from "../../services/songStorage";
 import { VerseFill } from "../song/VerseFill";
 import { ProgressionPresets } from "./ProgressionPresets";
 
@@ -86,9 +90,73 @@ function getChordRoot(symbol: string): string | null {
   return match ? `${match[1]}${match[2]}` : null;
 }
 
-function PaletteChord({ symbol, onAdd }: { symbol: string; onAdd: (symbol: string) => void }) {
+/**
+ * 碰撞判斷：以手指／滑鼠的位置為準。
+ * 在和弦上方就選那個和弦；落在和弦之間的空隙時，選同一行裡離手指最近的和弦，
+ * 這樣往前或往後拖都一樣好放。
+ */
+const collisionByPointer: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  const onItem = hits.find((hit) => {
+    const id = String(hit.id);
+    return !id.startsWith(LINE_PREFIX) && !id.startsWith(PALETTE_PREFIX);
+  });
+
+  if (onItem) {
+    return [onItem];
+  }
+
+  const zone = hits.find((hit) => String(hit.id).startsWith(LINE_PREFIX));
+  const pointer = args.pointerCoordinates;
+
+  if (!zone || !pointer) {
+    return hits;
+  }
+
+  const lineId = String(zone.id).slice(LINE_PREFIX.length);
+  let best: { id: string; distance: number } | null = null;
+
+  for (const container of args.droppableContainers) {
+    const data = container.data.current;
+
+    if (data?.kind !== "arrangement" || data.lineId !== lineId) {
+      continue;
+    }
+
+    const rect = args.droppableRects.get(container.id);
+
+    if (!rect) {
+      continue;
+    }
+
+    const dx = pointer.x - (rect.left + rect.width / 2);
+    const dy = pointer.y - (rect.top + rect.height / 2);
+    const distance = dx * dx + dy * dy;
+
+    if (!best || distance < best.distance) {
+      best = { id: String(container.id), distance };
+    }
+  }
+
+  return best ? [{ id: best.id }] : [zone];
+};
+
+function pointerPosition(event: DragEndEvent): { x: number; y: number } | null {
+  const origin = event.activatorEvent as Partial<PointerEvent> & Partial<TouchEvent>;
+  const touch = origin.touches?.[0] ?? origin.changedTouches?.[0];
+  const x = typeof origin.clientX === "number" ? origin.clientX : touch?.clientX;
+  const y = typeof origin.clientY === "number" ? origin.clientY : touch?.clientY;
+
+  if (typeof x !== "number" || typeof y !== "number") {
+    return null;
+  }
+
+  return { x: x + event.delta.x, y: y + event.delta.y };
+}
+
+function PaletteChord({ symbol, onAdd, scope }: { symbol: string; onAdd: (symbol: string) => void; scope: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `${PALETTE_PREFIX}${symbol}`,
+    id: `${PALETTE_PREFIX}${scope}:${symbol}`,
     data: { kind: "palette", symbol },
   });
 
@@ -109,12 +177,14 @@ function PaletteChord({ symbol, onAdd }: { symbol: string; onAdd: (symbol: strin
 
 function SortableSongChord({
   item,
+  lineId,
   isSelected,
   onSelect,
   onRemove,
   onLyric,
 }: {
   item: SongItem;
+  lineId: string;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
@@ -122,7 +192,7 @@ function SortableSongChord({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
-    data: { kind: "arrangement", symbol: item.symbol, itemId: item.id },
+    data: { kind: "arrangement", symbol: item.symbol, itemId: item.id, lineId },
   });
 
   return (
@@ -163,7 +233,7 @@ function SortableSongChord({
 }
 
 function LineDropZone({ lineId, isActive, children }: { lineId: string; isActive: boolean; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `${LINE_PREFIX}${lineId}` });
+  const { setNodeRef, isOver } = useDroppable({ id: `${LINE_PREFIX}${lineId}`, data: { kind: "line", lineId } });
 
   return (
     <div
@@ -299,6 +369,9 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [notice, setNotice] = useState("");
   const [showVerseFill, setShowVerseFill] = useState(false);
+  const [builderRoot, setBuilderRoot] = useState("C");
+  const [builderType, setBuilderType] = useState("");
+  const [builderBass, setBuilderBass] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -313,6 +386,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   const [selectedBaseSymbol, selectedBassNote] = selectedItem ? selectedItem.symbol.split("/") : ["", undefined];
   const selectedRootPitchClass = selectedRoot ? findRootKeyOption(selectedRoot)?.pitchClass : undefined;
   const paletteRootNotes = PALETTE_ROOT_NOTES[paletteAccidentalMode];
+  const builderSymbol = `${builderRoot}${builderType}${builderBass && builderBass !== builderRoot ? `/${builderBass}` : ""}`;
 
   useEffect(() => {
     if (selectedItemId && !locateItem(song, selectedItemId)) {
@@ -425,9 +499,13 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
 
     if (!location) return null;
 
+    const pointer = pointerPosition(event);
+    const rect = over.rect;
+    const after = pointer ? pointer.x > rect.left + rect.width / 2 : false;
+
     return {
       lineId: location.line.id,
-      index: getPointerInsertionIndex(event, location.itemIndex),
+      index: pointer ? location.itemIndex + (after ? 1 : 0) : getPointerInsertionIndex(event, location.itemIndex),
     };
   }
 
@@ -485,12 +563,96 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
 
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={collisionByPointer}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveDrag(null)}
       >
         <div className="song-arranger">
+          <section className="song-arranger__section song-palette" aria-labelledby="song-palette-title">
+            <div className="song-arranger__heading">
+              <div>
+                <p className="eyebrow">本曲和弦</p>
+                <h3 id="song-palette-title">先設好這首歌會用到的和弦</h3>
+              </div>
+              <span>含 C/G 這類分數和弦；設好後點一下或拖曳就能用，不用每次重選</span>
+            </div>
+
+            <div className="song-palette__list">
+              {(song.palette ?? []).length === 0 && <span className="song-palette__empty">還沒設定，從下面挑和弦加入。</span>}
+
+              {(song.palette ?? []).map((symbol) => (
+                <div className="song-palette__chip" key={symbol}>
+                  <PaletteChord symbol={symbol} scope="song" onAdd={(value) => addChord(value)} />
+                  <button
+                    type="button"
+                    className="song-palette__remove"
+                    aria-label={`從本曲和弦移除 ${symbol}`}
+                    onClick={() => onChange((current) => removePaletteChord(current, symbol))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="song-palette__builder">
+              <label>
+                <span>根音</span>
+                <select value={builderRoot} onChange={(event) => setBuilderRoot(event.target.value)}>
+                  {ROOT_KEY_OPTIONS.map((option) => (
+                    <option key={option.pitchClass} value={option.common}>
+                      {formatNoteLabel(option.common)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>類型</span>
+                <select value={builderType} onChange={(event) => setBuilderType(event.target.value)}>
+                  {CHORD_TYPE_OPTIONS.map((option) => (
+                    <option key={option.suffix || "major"} value={option.suffix}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>低音</span>
+                <select value={builderBass} onChange={(event) => setBuilderBass(event.target.value)}>
+                  <option value="">原位</option>
+                  {ROOT_KEY_OPTIONS.filter((option) => option.common !== builderRoot).map((option) => (
+                    <option key={option.pitchClass} value={option.common}>
+                      {formatNoteLabel(option.common)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!isValidSymbol(builderSymbol)}
+                onClick={() => onChange((current) => addPaletteChord(current, builderSymbol))}
+              >
+                加入 {builderSymbol}
+              </button>
+
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={total === 0}
+                onClick={() =>
+                  onChange((current) => uniqueSymbols(current).reduce((acc, symbol) => addPaletteChord(acc, symbol), current))
+                }
+              >
+                把編排中已有的和弦都加入
+              </button>
+            </div>
+          </section>
+
           <section className="song-arranger__section" aria-labelledby="palette-title">
             <div className="song-arranger__heading">
               <div>
@@ -529,7 +691,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
 
             <div className="palette-chord-list">
               {paletteRootNotes.map((symbol) => (
-                <PaletteChord key={symbol} symbol={symbol} onAdd={(value) => addChord(value)} />
+                <PaletteChord key={symbol} symbol={symbol} scope="root" onAdd={(value) => addChord(value)} />
               ))}
             </div>
           </section>
@@ -575,6 +737,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                               <SortableSongChord
                                 key={item.id}
                                 item={item}
+                                lineId={line.id}
                                 isSelected={selectedItemId === item.id}
                                 onSelect={() => selectItem(item.id)}
                                 onRemove={() => removeChord(item.id)}
@@ -654,6 +817,14 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
               onClick={() => onChange((s) => setBar(s, selectedItem.id, !selectedItem.bar))}
             >
               ｜ 小節線
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              disabled={(song.palette ?? []).includes(selectedItem.symbol)}
+              onClick={() => onChange((s) => addPaletteChord(s, selectedItem.symbol))}
+            >
+              ＋ 加入本曲和弦
             </button>
             <button type="button" className="ghost-button" onClick={() => removeChord(selectedItem.id)}>
               刪除

@@ -202,7 +202,7 @@ export function useSongLibrary(): SongLibrary {
         return prev;
       }
 
-      const stored = createSong(prev.draft.title, prev.draft.lines, prev.draft.key);
+      const stored = createSong(prev.draft.title, prev.draft.lines, prev.draft.key, prev.draft.palette);
       return {
         ...prev,
         draft: null,

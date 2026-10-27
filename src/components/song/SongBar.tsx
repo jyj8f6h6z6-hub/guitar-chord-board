@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { SongLibrary } from "../../hooks/useSongLibrary";
 import { KEY_OPTIONS } from "../../services/chordTranspose";
 import { MAX_TITLE_LENGTH } from "../../services/songModel";
 import { exportSongsToJson, parseImportedJson } from "../../services/songStorage";
+import type { SongLibrary } from "../../hooks/useSongLibrary";
 import { ShareButton } from "../ShareButton";
 
 function safeFileName(name: string): string {
@@ -137,7 +137,7 @@ export function SongBar({ library, showShare = true }: SongBarProps) {
             type="text"
             value={song.title}
             maxLength={MAX_TITLE_LENGTH}
-            placeholder="例如：一件美事"
+            placeholder="例如：晴天"
             onChange={(event) => {
               const title = event.target.value;
               library.updateSong((current) => ({ ...current, title }), "title");

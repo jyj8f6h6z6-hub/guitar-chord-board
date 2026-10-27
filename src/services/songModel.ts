@@ -26,13 +26,16 @@ export function createLine(
   return { id: createId(), section, customLabel, items };
 }
 
-export function createSong(title = "", lines?: SongLine[], key?: string): Song {
+export const MAX_PALETTE = 40;
+
+export function createSong(title = "", lines?: SongLine[], key?: string, palette?: string[]): Song {
   return {
     id: createId(),
     title,
     lines: lines && lines.length > 0 ? lines : [createLine()],
     updatedAt: Date.now(),
     ...(key ? { key } : {}),
+    ...(palette && palette.length > 0 ? { palette } : {}),
   };
 }
 
@@ -49,6 +52,24 @@ export function linesFromSymbols(symbols: readonly string[], perLine = 4): SongL
 
 export function createDefaultSong(): Song {
   return createSong("", linesFromSymbols(DEFAULT_SONG_SYMBOLS));
+}
+
+/** 加入本曲和弦（不重複、有上限）。 */
+export function addPaletteChord(song: Song, symbol: string): Song {
+  const palette = song.palette ?? [];
+
+  if (palette.includes(symbol) || palette.length >= MAX_PALETTE) {
+    return song;
+  }
+
+  return { ...song, palette: [...palette, symbol] };
+}
+
+export function removePaletteChord(song: Song, symbol: string): Song {
+  const palette = (song.palette ?? []).filter((entry) => entry !== symbol);
+  const { palette: _old, ...rest } = song;
+  void _old;
+  return palette.length > 0 ? { ...rest, palette } : rest;
 }
 
 export function allItems(song: Song): SongItem[] {

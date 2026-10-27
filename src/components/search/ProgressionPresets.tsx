@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { PROGRESSION_PRESETS } from "../../data/progressions";
-import type { ProgressionPreset } from "../../data/progressions";
+import { PROGRESSION_CATEGORIES, PROGRESSION_PRESETS } from "../../data/progressions";
+import type { ProgressionCategory, ProgressionPreset } from "../../data/progressions";
 import {
   KEY_OPTIONS,
   getTranspositionSemitones,
@@ -15,6 +15,9 @@ interface ProgressionPresetsProps {
 
 export function ProgressionPresets({ hasItems, onApply }: ProgressionPresetsProps) {
   const [key, setKey] = useState("C");
+  const [category, setCategory] = useState<ProgressionCategory>("pop");
+  const categoryInfo = PROGRESSION_CATEGORIES.find((entry) => entry.id === category);
+  const visible = PROGRESSION_PRESETS.filter((preset) => preset.category === category);
 
   function apply(preset: ProgressionPreset) {
     if (hasItems && !window.confirm("要用這組進行取代目前這首歌的和弦（含歌詞）嗎？可以用「復原」找回。")) {
@@ -49,8 +52,25 @@ export function ProgressionPresets({ hasItems, onApply }: ProgressionPresetsProp
           </select>
         </label>
 
+        <div className="progression-presets__main">
+        <div className="progression-presets__tabs" role="group" aria-label="進行類別">
+          {PROGRESSION_CATEGORIES.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={category === entry.id ? "is-active" : ""}
+              aria-pressed={category === entry.id}
+              onClick={() => setCategory(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+
+        {categoryInfo?.note && <p className="progression-presets__note">{categoryInfo.note}</p>}
+
         <div className="progression-presets__list">
-          {PROGRESSION_PRESETS.map((preset) => (
+          {visible.map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -61,6 +81,7 @@ export function ProgressionPresets({ hasItems, onApply }: ProgressionPresetsProp
               <small>{preset.hint}</small>
             </button>
           ))}
+        </div>
         </div>
       </div>
     </details>

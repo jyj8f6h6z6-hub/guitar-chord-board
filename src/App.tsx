@@ -10,6 +10,7 @@ import "./mode3.css";
 
 import { useSongLibrary } from "./hooks/useSongLibrary";
 import { setLeftHanded, useLeftHanded } from "./services/persistence";
+import { getTranspositionSemitones, keyPrefersFlats, transposeChordSymbol } from "./services/chordTranspose";
 import { applySymbols, linesFromSymbols } from "./services/songModel";
 import { hasSharedSongInUrl, readSharedSongFromUrl } from "./services/songStorage";
 import type { AppMode } from "./types/chord";
@@ -65,7 +66,13 @@ function App() {
   }
 
   function applyTransposition(symbols: readonly string[], newKey: string) {
-    library.updateSong((current) => ({ ...applySymbols(current, symbols), key: newKey }));
+    library.updateSong((current) => {
+      const semitones = getTranspositionSemitones(current.key ?? "C", newKey);
+      const preferFlats = keyPrefersFlats(newKey);
+      const palette = current.palette?.map((symbol) => transposeChordSymbol(symbol, semitones, preferFlats));
+
+      return { ...applySymbols(current, symbols), key: newKey, ...(palette ? { palette } : {}) };
+    });
   }
 
   function changeKey(key: string) {

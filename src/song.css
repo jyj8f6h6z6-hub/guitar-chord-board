@@ -930,3 +930,129 @@ body.is-performing {
   padding-left: calc(14px + env(safe-area-inset-left));
   padding-right: calc(14px + env(safe-area-inset-right));
 }
+
+/* 常用進行：類別分頁 */
+.progression-presets__main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.progression-presets__tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.progression-presets__tabs button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.progression-presets__tabs button.is-active {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.18);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.progression-presets__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+/* 本曲和弦 */
+.song-palette__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  min-height: 48px;
+  align-items: center;
+}
+
+.song-palette__empty {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.song-palette__chip {
+  position: relative;
+}
+
+.song-palette__chip .palette-chord {
+  min-width: 64px;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.song-palette__remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.song-palette__remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.song-palette__builder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.song-palette__builder label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.song-palette__builder select {
+  min-height: 40px;
+  width: auto;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+/* 手機：「更多」改成貼底面板，不會被畫面邊緣切掉 */
+@media (max-width: 640px) {
+  .song-bar__menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    min-width: 0;
+    z-index: 900;
+  }
+
+  .song-bar__menu button {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+}
