@@ -1143,8 +1143,33 @@ body.is-performing {
   gap: 4px 0;
 }
 
-.lead-line.is-numbered .lead-line__cells {
-  padding-left: 2.2em;
+/* 凸排：節號掛在左邊空白處，所有行的歌詞左緣對齊 */
+.lead-sheet {
+  --lead-gutter: 0em;
+  --lead-edge: calc(6px + 4.6em + 8px);
+}
+
+.lead-sheet.has-gutter {
+  --lead-gutter: 2.4em;
+}
+
+.lead-line__cells {
+  padding-left: var(--lead-gutter);
+}
+
+.lead-legend {
+  padding-left: calc(var(--lead-edge) + var(--lead-gutter));
+}
+
+.lead-sheet--large {
+  --lead-edge: 10px;
+}
+
+@media (max-width: 640px) {
+  .lead-sheet,
+  .lead-sheet--large {
+    --lead-edge: 6px;
+  }
 }
 
 .lead-cell {

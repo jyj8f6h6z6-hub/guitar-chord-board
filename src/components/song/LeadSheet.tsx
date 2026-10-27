@@ -92,8 +92,13 @@ export function LeadSheet({
     return { firstIds: ids, legend: entries };
   }, [song, symbols]);
 
+  // 凸排：整首歌只要有一行標了節號，每一行左邊都留出同樣寬的空白，歌詞左緣才會對齊。
+  const hasGutter = song.lines.some(
+    (line, lineIndex) => verseRows(line) >= 2 && (line.section !== "" || lineIndex === 0),
+  );
+
   return (
-    <div className={`lead-sheet${large ? " lead-sheet--large" : ""}`}>
+    <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}`}>
       {diagramMode === "legend" && legend.length > 0 && (
         <div className="lead-legend" aria-label="本曲和弦按法">
           {legend.map((entry) => (
