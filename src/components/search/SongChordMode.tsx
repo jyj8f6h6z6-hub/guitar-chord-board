@@ -752,6 +752,54 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                         )}
                       </LineDropZone>
                     </SortableContext>
+
+                    {selectedItem && selected?.line.id === line.id && (
+                      <>
+          <div className="chord-toolbar chord-toolbar--inline" role="toolbar" aria-label={`第 ${lineIndex + 1} 行選取的和弦操作`}>
+            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, -1))}>
+              ← 前移
+            </button>
+            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, 1))}>
+              後移 →
+            </button>
+            <button type="button" className="ghost-button" onClick={duplicateSelected}>
+              ⧉ 複製和弦
+            </button>
+            <button type="button" className="ghost-button" onClick={splitAfterSelected}>
+              ↵ 從此換行
+            </button>
+            <button
+              type="button"
+              className={`ghost-button${selectedItem.bar ? " is-active" : ""}`}
+              aria-pressed={selectedItem.bar}
+              onClick={() => onChange((s) => setBar(s, selectedItem.id, !selectedItem.bar))}
+            >
+              ｜ 小節線
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              disabled={(song.palette ?? []).includes(selectedItem.symbol)}
+              onClick={() => onChange((s) => addPaletteChord(s, selectedItem.symbol))}
+            >
+              ＋ 加入本曲和弦
+            </button>
+            <button type="button" className="ghost-button" onClick={() => removeChord(selectedItem.id)}>
+              刪除
+            </button>
+          <button
+              type="button"
+              className="ghost-button"
+              onClick={() => document.getElementById("selected-chord-editor-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              按法與類型 ↓
+            </button>
+            <button type="button" className="ghost-button" onClick={() => setSelectedItemId(null)} aria-label="取消選取">
+              ✕
+            </button>
+          </div>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -794,40 +842,6 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
 
             <button type="button" className="secondary-button" onClick={() => setSelectedItemId(null)}>
               關閉
-            </button>
-          </div>
-
-          <div className="chord-toolbar" role="toolbar" aria-label="選取的和弦操作">
-            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, -1))}>
-              ← 前移
-            </button>
-            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, 1))}>
-              後移 →
-            </button>
-            <button type="button" className="ghost-button" onClick={duplicateSelected}>
-              ⧉ 複製和弦
-            </button>
-            <button type="button" className="ghost-button" onClick={splitAfterSelected}>
-              ↵ 從此換行
-            </button>
-            <button
-              type="button"
-              className={`ghost-button${selectedItem.bar ? " is-active" : ""}`}
-              aria-pressed={selectedItem.bar}
-              onClick={() => onChange((s) => setBar(s, selectedItem.id, !selectedItem.bar))}
-            >
-              ｜ 小節線
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
-              disabled={(song.palette ?? []).includes(selectedItem.symbol)}
-              onClick={() => onChange((s) => addPaletteChord(s, selectedItem.symbol))}
-            >
-              ＋ 加入本曲和弦
-            </button>
-            <button type="button" className="ghost-button" onClick={() => removeChord(selectedItem.id)}>
-              刪除
             </button>
           </div>
 

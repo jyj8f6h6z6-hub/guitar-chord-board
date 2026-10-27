@@ -1056,3 +1056,16 @@ body.is-performing {
     font-size: 1rem;
   }
 }
+
+/* 選取和弦的工具列：直接顯示在該行下方，不必往下捲 */
+.chord-toolbar--inline {
+  margin: 10px 0 0;
+  padding: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: rgba(233, 185, 73, 0.08);
+}
+
+.chord-toolbar--inline .ghost-button {
+  min-height: 40px;
+}
