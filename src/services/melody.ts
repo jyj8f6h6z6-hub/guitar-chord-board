@@ -400,17 +400,30 @@ export function layoutLineMelody(
 
 /* ---------- 歌詞對應 ---------- */
 
-const ATTACH_TO_PREVIOUS = /^[，。、；：！？,.;:!?）)」』”’…～~]$/;
+const ATTACH_TO_PREVIOUS = /^[，。、；：！？,.;:!?）)」』”’…～~》〉】]$/;
+const ATTACH_TO_NEXT = /^[（(「『“‘《〈【]$/;
 
-/** 把一節歌詞切成「一個字一個音」的單位；標點接在前一個字後面。 */
+/** 把一節歌詞切成「一個字一個音」的單位；標點接在前一個字後面，左括號、引號接在後一個字前面。 */
 export function splitLyricChars(text: string): string[] {
   const result: string[] = [];
+  let prefix = "";
 
   for (const char of Array.from(text)) {
-    if (result.length > 0 && ATTACH_TO_PREVIOUS.test(char)) {
+    if (ATTACH_TO_NEXT.test(char)) {
+      prefix += char;
+    } else if (ATTACH_TO_PREVIOUS.test(char) && result.length > 0 && prefix === "") {
       result[result.length - 1] += char;
     } else {
-      result.push(char);
+      result.push(prefix + char);
+      prefix = "";
+    }
+  }
+
+  if (prefix !== "") {
+    if (result.length > 0) {
+      result[result.length - 1] += prefix;
+    } else {
+      result.push(prefix);
     }
   }
 
