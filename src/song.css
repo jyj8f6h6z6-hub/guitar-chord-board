@@ -1680,3 +1680,86 @@ body.is-performing {
     display: none;
   }
 }
+
+/* 編排區的和弦：顯示小節線樣式、反覆開始、房子 */
+.song-line .arranged-chord {
+  --bar-color: var(--muted);
+}
+
+.arranged-chord.has-bar::after {
+  right: calc(-5px - var(--chip-bar-w, 2px));
+  width: var(--chip-bar-w, 2px);
+  border-right: 0;
+  background: linear-gradient(var(--bar-color), var(--bar-color)) right center / 2px 100% no-repeat;
+}
+
+.arranged-chord.bar-double {
+  --chip-bar-w: 6px;
+}
+
+.arranged-chord.bar-double::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 2px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 2px 100% no-repeat;
+}
+
+.arranged-chord.bar-final {
+  --chip-bar-w: 9px;
+}
+
+.arranged-chord.bar-final::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 5px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 2px 100% no-repeat;
+}
+
+.arranged-chord.bar-repeat-end {
+  --chip-bar-w: 17px;
+}
+
+.arranged-chord.bar-repeat-end::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 5px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) right 7px center / 2px 100% no-repeat,
+    radial-gradient(circle, var(--bar-color) 2px, transparent 2.5px) left 0 top calc(50% - 8px) / 6px 6px no-repeat,
+    radial-gradient(circle, var(--bar-color) 2px, transparent 2.5px) left 0 top calc(50% + 2px) / 6px 6px no-repeat;
+}
+
+.arranged-chord.has-repeat-start::before {
+  content: "";
+  position: absolute;
+  left: -22px;
+  top: 6px;
+  width: 17px;
+  height: 44px;
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 5px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left 7px center / 2px 100% no-repeat,
+    radial-gradient(circle, var(--bar-color) 2px, transparent 2.5px) right 0 top calc(50% - 8px) / 6px 6px no-repeat,
+    radial-gradient(circle, var(--bar-color) 2px, transparent 2.5px) right 0 top calc(50% + 2px) / 6px 6px no-repeat;
+}
+
+.arranged-chord.has-repeat-start {
+  margin-left: 20px;
+}
+
+.arranged-chord.has-bar {
+  margin-right: calc(var(--chip-bar-w, 2px) + 2px);
+}
+
+.arranged-chord__main {
+  position: relative;
+}
+
+.arranged-chord__ending {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(233, 162, 95, 0.2);
+  color: #e9a25f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.5;
+}

@@ -187,7 +187,7 @@ function PaletteChord({ symbol, onAdd, scope }: { symbol: string; onAdd: (symbol
 function SortableSongChord({
   item,
   lineId,
-  hasBar,
+  barKind,
   beats,
   isSelected,
   onSelect,
@@ -196,7 +196,8 @@ function SortableSongChord({
 }: {
   item: SongItem;
   lineId: string;
-  hasBar: boolean;
+  /** 這個和弦後面的小節線樣式（single/double/final/repeat-end），沒有線為 null */
+  barKind: string | null;
   beats: number | undefined;
   isSelected: boolean;
   onSelect: () => void;
@@ -213,8 +214,8 @@ function SortableSongChord({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`arranged-chord${isSelected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}${
-        hasBar ? " has-bar" : ""
-      }`}
+        barKind ? ` has-bar bar-${barKind}` : ""
+      }${item.repeatStart ? " has-repeat-start" : ""}`}
     >
       <div className="arranged-chord__top">
         <button type="button" className="arranged-chord__main" onClick={onSelect} {...attributes} {...listeners}>
@@ -222,6 +223,7 @@ function SortableSongChord({
           {beats !== undefined && (
             <small className={`arranged-chord__beats${item.beats ? " is-custom" : ""}`}>{beats}拍</small>
           )}
+          {item.ending !== undefined && <small className="arranged-chord__ending">房{item.ending}.</small>}
         </button>
 
         <button
@@ -397,6 +399,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   const sections = effectiveSections(song);
   const bars = effectiveBarIds(song);
   const total = countItems(song);
+  const lastItemId = [...song.lines].reverse().find((entry) => entry.items.length > 0)?.items.slice(-1)[0]?.id;
   const selected = selectedItemId ? locateItem(song, selectedItemId) : null;
   const selectedItem = selected?.item ?? null;
   const selectedRoot = selectedItem ? getChordRoot(selectedItem.symbol) : null;
@@ -755,7 +758,17 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                                 key={item.id}
                                 item={item}
                                 lineId={line.id}
-                                hasBar={bars.has(item.id) || Boolean(item.barStyle)}
+                                barKind={
+                                  item.barStyle
+                                    ? item.barStyle === "repeatEnd"
+                                      ? "repeat-end"
+                                      : item.barStyle
+                                    : bars.has(item.id)
+                                      ? item.id === lastItemId
+                                        ? "final"
+                                        : "single"
+                                      : null
+                                }
                                 beats={itemBeats(song, item)}
                                 isSelected={selectedItemId === item.id}
                                 onSelect={() => selectItem(item.id)}
