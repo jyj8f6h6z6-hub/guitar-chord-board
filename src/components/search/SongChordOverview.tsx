@@ -14,6 +14,21 @@ import type { DiagramMode, DiagramSize } from "../song/LeadSheet";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
+/** 列印字級（倍率）；用 CSS zoom 整體放大，圖、字、線條一起變大。 */
+const PRINT_SCALES: readonly { value: number; label: string }[] = [
+  { value: 1, label: "標準" },
+  { value: 1.3, label: "大" },
+  { value: 1.6, label: "特大" },
+];
+
+/** 列印時每一行最多排幾個和弦（0 = 自動換行）；固定時每欄等寬，小節線上下對齊。 */
+const PRINT_COLUMNS: readonly { value: number; label: string }[] = [
+  { value: 0, label: "自動" },
+  { value: 4, label: "4" },
+  { value: 6, label: "6" },
+  { value: 8, label: "8" },
+];
+
 const LAYOUT_LABELS: Record<OverviewLayout, string> = {
   lead: "簡譜風格",
   cards: "和弦圖卡片",
@@ -39,6 +54,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
   const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
+  const [printScale, setPrintScale] = usePersistentState<number>("guitar-chord-board:print-scale", 1.3);
+  const [printCols, setPrintCols] = usePersistentState<number>("guitar-chord-board:print-cols", 0);
   const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
   const songHasMelody = hasMelody(song);
 
@@ -166,6 +183,40 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           </div>
         )}
 
+        <div className="segmented-control" role="group" aria-label="列印字級">
+          <span className="segmented-control__label">列印字級</span>
+          {PRINT_SCALES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={printScale === option.value ? "is-active" : ""}
+              aria-pressed={printScale === option.value}
+              onClick={() => setPrintScale(option.value)}
+              title="只影響列印／存成 PDF，不改變畫面"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {layout === "lead" && (
+          <div className="segmented-control" role="group" aria-label="列印每行和弦數">
+            <span className="segmented-control__label">列印每行</span>
+            {PRINT_COLUMNS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={printCols === option.value ? "is-active" : ""}
+                aria-pressed={printCols === option.value}
+                onClick={() => setPrintCols(option.value)}
+                title="列印時每一行最多排幾個和弦；固定後每欄等寬、小節線對齊（只影響列印）"
+              >
+                {option.value === 0 ? "自動" : `${option.label} 個`}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="overview-toolbar__actions">
           <button type="button" className="ghost-button" onClick={onPerform} disabled={total === 0}>
             進入演奏模式
@@ -270,6 +321,11 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         </span>
       </div>
 
+      <div
+        className="print-scale-box"
+        data-print-cols={printCols > 0 ? printCols : undefined}
+        style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
+      >
       {total === 0 ? (
         <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
       ) : layout === "lead" ? (
@@ -323,6 +379,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           ))}
         </div>
       )}
+      </div>
     </section>
   );
 }
