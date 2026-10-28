@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import packageJson from "../package.json";
+import { APP_VERSION, experimentalLabel } from "./version";
 
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
@@ -92,7 +92,10 @@ function App() {
           </span>
 
           <span>
-            <strong>Guitar Chord Board</strong>
+            <strong>
+              Guitar Chord Board
+              {experimentalLabel() && <em className="exp-badge">{experimentalLabel()}</em>}
+            </strong>
             <small>和弦按法與組成音工具</small>
           </span>
         </a>
@@ -226,7 +229,10 @@ function App() {
       </main>
 
       <footer>
-        <span>Guitar Chord Board · {packageJson.version}</span>
+        <span>
+          Guitar Chord Board · {APP_VERSION}
+          {experimentalLabel() ? `（${experimentalLabel()}）` : ""}
+        </span>
         <span>{draft ? "分享的歌曲尚未存入" : "歌曲只儲存在你的瀏覽器"}</span>
       </footer>
     </div>

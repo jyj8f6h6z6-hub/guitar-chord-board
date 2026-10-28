@@ -35,7 +35,18 @@ export interface SongItem {
   beats?: number;
   /** 使用者選擇的按法 id，未選則用預設第一個 */
   shapeId?: string;
+  /** 這個和弦期間的旋律（簡譜文字，例如 "3 3 4 5"）；語法見 services/melody.ts */
+  melody?: string;
+  /** 這個和弦後面的小節線樣式；未設定則依自動／手動小節線決定 */
+  barStyle?: BarStyle;
+  /** 這個和弦前面畫反覆開始記號 ‖: */
+  repeatStart?: boolean;
+  /** 從這個和弦開始的「房子」（第 1、2、3 次結尾）；一直到有小節線樣式的和弦或行尾 */
+  ending?: number;
 }
+
+export type BarStyle = "double" | "final" | "repeatEnd";
+export const BAR_STYLES: readonly BarStyle[] = ["double", "final", "repeatEnd"];
 
 /** 一行（一句）。有標籤的行是段落的開頭，後面沒有標籤的行沿用它。 */
 export interface SongLine {

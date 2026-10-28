@@ -31,6 +31,7 @@ import {
   MAX_LABEL_LENGTH,
   MAX_LYRIC_LENGTH,
   BEAT_CHOICES,
+  MAX_ENDING,
   MAX_LYRIC_ROWS,
   addLine,
   addPaletteChord,
@@ -51,7 +52,10 @@ import {
   removePaletteChord,
   uniqueSymbols,
   replaceSymbol,
+  setBarStyle,
   setBeats,
+  setEnding,
+  setRepeatStart,
   toggleBar,
   setLyric,
   setSection,
@@ -60,9 +64,10 @@ import {
 } from "../../services/songModel";
 import type { Song, SongItem, SongLine } from "../../types/song";
 import { SECTION_KINDS, SECTION_LABELS } from "../../types/song";
-import type { SectionKind } from "../../types/song";
+import type { BarStyle, SectionKind } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import { isValidSymbol } from "../../services/songStorage";
+import { MelodyEditor } from "../song/MelodyEditor";
 import { VerseFill } from "../song/VerseFill";
 import { ProgressionPresets } from "./ProgressionPresets";
 
@@ -750,7 +755,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                                 key={item.id}
                                 item={item}
                                 lineId={line.id}
-                                hasBar={bars.has(item.id)}
+                                hasBar={bars.has(item.id) || Boolean(item.barStyle)}
                                 beats={itemBeats(song, item)}
                                 isSelected={selectedItemId === item.id}
                                 onSelect={() => selectItem(item.id)}
@@ -824,6 +829,54 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                 </button>
               ))}
             </span>
+            <span className="beat-picker bar-style-picker" role="group" aria-label="小節線樣式與反覆記號">
+              <span className="beat-picker__label">線型</span>
+              {(
+                [
+                  [undefined, "標準", "一般小節線（依自動／手動設定）"],
+                  ["double", "‖ 雙線", "段落結束的雙小節線"],
+                  ["final", "終止線", "全曲結束的終止線（最後一個和弦預設就是）"],
+                  ["repeatEnd", ":‖ 反覆", "反覆結束記號"],
+                ] as const
+              ).map(([style, label, title]) => (
+                <button
+                  key={label}
+                  type="button"
+                  title={title}
+                  className={selectedItem.barStyle === style ? "is-active" : ""}
+                  aria-pressed={selectedItem.barStyle === style}
+                  onClick={() => onChange((s) => setBarStyle(s, selectedItem.id, style as BarStyle | undefined))}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                title="這個和弦前面畫反覆開始記號"
+                className={selectedItem.repeatStart ? "is-active" : ""}
+                aria-pressed={Boolean(selectedItem.repeatStart)}
+                onClick={() => onChange((s) => setRepeatStart(s, selectedItem.id, !selectedItem.repeatStart))}
+              >
+                ‖: 反覆開始
+              </button>
+              <label className="bar-style-picker__ending">
+                房子
+                <select
+                  value={selectedItem.ending ?? 0}
+                  title="第 1、2 次結尾的括線；從這個和弦開始，到有線型的和弦為止"
+                  onChange={(event) =>
+                    onChange((s) => setEnding(s, selectedItem.id, Number(event.target.value) || undefined))
+                  }
+                >
+                  <option value={0}>無</option>
+                  {Array.from({ length: MAX_ENDING }, (_, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {index + 1}.
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </span>
             <button
               type="button"
               className="ghost-button"
@@ -837,6 +890,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
           </div>
                       </>
                     )}
+
+                    {line.items.length > 0 && <MelodyEditor song={song} line={line} onChange={onChange} />}
                   </div>
                 );
               })}

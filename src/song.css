@@ -1247,3 +1247,436 @@ body.is-performing {
 .lead-line__cells {
   align-items: flex-end;
 }
+
+/* ================= 1.3.0-exp.1：簡譜旋律、小節線樣式 ================= */
+
+.lead-sheet {
+  --bar-color: var(--muted);
+  --mel-color: var(--text);
+}
+
+/* 和弦＋旋律包在一起，小節線畫在這一層的右緣（不穿過歌詞） */
+.lead-cell__top {
+  position: relative;
+  align-self: stretch;
+  --bar-w: 0px;
+}
+
+.lead-cell__top.has-bar {
+  --bar-w: 2px;
+  margin-right: 0.45em;
+  padding-right: var(--bar-w);
+}
+
+.lead-cell__top.bar--double {
+  --bar-w: 6px;
+}
+
+.lead-cell__top.bar--final {
+  --bar-w: 8px;
+}
+
+.lead-cell__top.bar--repeat-end {
+  --bar-w: 16px;
+}
+
+.lead-cell__top.has-bar::after {
+  content: "";
+  position: absolute;
+  top: 0.15em;
+  bottom: 0.1em;
+  right: 0;
+  width: var(--bar-w);
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 1.5px 100% no-repeat;
+}
+
+.lead-cell__top.bar--double::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 1.5px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 1.5px 100% no-repeat;
+}
+
+.lead-cell__top.bar--final::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 4px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 1.5px 100% no-repeat;
+}
+
+.lead-cell__top.bar--repeat-end::after {
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) right center / 4px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) right 6px center / 1.5px 100% no-repeat,
+    radial-gradient(circle, var(--bar-color) 1.7px, transparent 2.1px) left 0 top calc(50% - 7px) / 5px 5px no-repeat,
+    radial-gradient(circle, var(--bar-color) 1.7px, transparent 2.1px) left 0 top calc(50% + 2px) / 5px 5px no-repeat;
+}
+
+/* 反覆開始 ‖: 畫在這個和弦的左緣 */
+.lead-cell.is-repeat-start {
+  padding-left: 18px;
+}
+
+.lead-cell__top.has-repeat-start::before {
+  content: "";
+  position: absolute;
+  top: 0.15em;
+  bottom: 0.1em;
+  left: -18px;
+  width: 16px;
+  background:
+    linear-gradient(var(--bar-color), var(--bar-color)) left center / 4px 100% no-repeat,
+    linear-gradient(var(--bar-color), var(--bar-color)) left 6px center / 1.5px 100% no-repeat,
+    radial-gradient(circle, var(--bar-color) 1.7px, transparent 2.1px) right 0 top calc(50% - 7px) / 5px 5px no-repeat,
+    radial-gradient(circle, var(--bar-color) 1.7px, transparent 2.1px) right 0 top calc(50% + 2px) / 5px 5px no-repeat;
+}
+
+/* 房子（第 1、2 次結尾）的括線 */
+.lead-cell__volta {
+  align-self: stretch;
+  min-height: 1.3em;
+  border-top: 1.5px solid var(--bar-color);
+  color: var(--muted);
+  font-size: 0.85em;
+  line-height: 1.3;
+  padding-left: 0.35em;
+}
+
+.lead-cell__volta.is-first {
+  border-left: 1.5px solid var(--bar-color);
+}
+
+/* 旋律列 */
+.mel-row {
+  display: flex;
+  align-items: flex-start;
+  padding-right: 0.5em;
+  color: var(--mel-color);
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.mel-col {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mel-num {
+  position: relative;
+  display: inline-block;
+  min-height: 1.25em;
+  line-height: 1.25;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum";
+  font-weight: 500;
+}
+
+.mel-col.is-hold .mel-num {
+  color: var(--muted);
+}
+
+.mel-acc {
+  position: absolute;
+  right: 100%;
+  top: 0.05em;
+  font-size: 0.6em;
+  line-height: 1;
+  margin-right: 0.05em;
+}
+
+.mel-dot {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: 0.08em;
+  font-weight: 700;
+}
+
+.mel-dots {
+  display: block;
+  height: 0.5em;
+  font-size: 0.5em;
+  line-height: 0.5em;
+  letter-spacing: 0.05em;
+  color: var(--mel-color);
+}
+
+.mel-lines {
+  align-self: stretch;
+  min-height: 0.55em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: -0.12em;
+}
+
+.mel-lines i {
+  display: block;
+  height: 0;
+  border-top: 1.4px solid var(--mel-color);
+}
+
+.mel-col.is-beat-start .mel-lines i {
+  margin-left: 0.16em;
+}
+
+/* 連音線：數字上方的弧線，橫跨整個括號範圍 */
+.mel-slur {
+  align-self: stretch;
+  height: 0.5em;
+  border-top: 1.3px solid var(--mel-color);
+}
+
+.mel-col.slur-start .mel-slur {
+  margin-left: 0.25em;
+  border-left: 1.3px solid var(--mel-color);
+  border-top-left-radius: 0.5em;
+}
+
+.mel-col.slur-end .mel-slur {
+  margin-right: 0.25em;
+  border-right: 1.3px solid var(--mel-color);
+  border-top-right-radius: 0.5em;
+}
+
+.mel-col.slur-only .mel-slur {
+  margin: 0 0.25em;
+  border-left: 1.3px solid var(--mel-color);
+  border-right: 1.3px solid var(--mel-color);
+  border-radius: 0.5em 0.5em 0 0;
+}
+
+/* 沒有連音線的欄不畫弧線，只留高度 */
+.mel-col:not(.slur-start):not(.slur-mid):not(.slur-end):not(.slur-only) .mel-slur {
+  border-top-color: transparent;
+}
+
+/* 歌詞對齊到音符 */
+.lead-cell__lyric.is-aligned {
+  display: flex;
+  white-space: nowrap;
+}
+
+.lead-cell__lyric.is-aligned .syl {
+  flex: none;
+  text-align: center;
+}
+
+@media print {
+  .lead-sheet {
+    --bar-color: #111111;
+    --mel-color: #111111;
+  }
+
+  .lead-cell__volta {
+    color: #111111;
+  }
+
+  .mel-col.is-hold .mel-num {
+    color: #111111;
+  }
+
+  .lead-cell__top.has-bar::after,
+  .lead-cell__top.has-repeat-start::before {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* 旋律輸入 */
+.melody-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.melody-editor__toggle {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.melody-editor__toggle small {
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.melody-editor__toggle.is-open {
+  border-color: var(--accent);
+}
+
+.melody-editor__flag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(220, 120, 40, 0.18);
+  color: #e9a25f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.melody-editor__peek {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.melody-editor__body {
+  display: grid;
+  gap: 8px;
+}
+
+.melody-editor__input {
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  resize: vertical;
+}
+
+.melody-keypad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.melody-keypad button {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.melody-keypad button.is-mark {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.melody-keypad button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.melody-editor__checks {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 0.85rem;
+}
+
+.melody-editor__checks .is-ok {
+  color: #7bc98b;
+}
+
+.melody-editor__checks .is-warn {
+  color: #e9a25f;
+}
+
+.melody-editor__checks .is-error {
+  color: #ef7b7b;
+}
+
+.melody-editor__checks .is-hint {
+  color: var(--muted);
+}
+
+.melody-editor__preview {
+  overflow-x: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.melody-editor__preview .lead-sheet {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.melody-editor__help {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.melody-editor__help code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.bar-style-picker__ending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.bar-style-picker__ending select {
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+@media print {
+  .melody-editor {
+    display: none !important;
+  }
+}
+
+/* 試驗版標示 */
+.exp-badge {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid #e9a25f;
+  border-radius: 999px;
+  color: #e9a25f;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+@media print {
+  .exp-badge {
+    display: none;
+  }
+}

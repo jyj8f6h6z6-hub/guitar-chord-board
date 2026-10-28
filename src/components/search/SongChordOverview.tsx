@@ -6,7 +6,7 @@ import {
   keyPrefersFlats,
   transposeChordSymbol,
 } from "../../services/chordTranspose";
-import { allItems, countItems, effectiveSections, songMeta } from "../../services/songModel";
+import { allItems, countItems, effectiveSections, hasMelody, songMeta } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
@@ -39,6 +39,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
   const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
+  const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
+  const songHasMelody = hasMelody(song);
 
   const items = useMemo(() => allItems(song), [song]);
   const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
@@ -150,6 +152,17 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
                 圖{DIAGRAM_SIZES[size].label}
               </button>
             ))}
+          </div>
+        )}
+
+        {layout === "lead" && songHasMelody && (
+          <div className="segmented-control" role="group" aria-label="簡譜旋律">
+            <button type="button" className={showMelody ? "is-active" : ""} aria-pressed={showMelody} onClick={() => setShowMelody(true)}>
+              顯示旋律
+            </button>
+            <button type="button" className={!showMelody ? "is-active" : ""} aria-pressed={!showMelody} onClick={() => setShowMelody(false)}>
+              只看和弦歌詞
+            </button>
           </div>
         )}
 
@@ -265,6 +278,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           symbols={symbolById}
           diagramMode={diagramMode}
           diagramWidth={DIAGRAM_SIZES[diagramSize].width}
+          showMelody={showMelody}
         />
       ) : layout === "cards" ? (
         <div className="cards-by-line">

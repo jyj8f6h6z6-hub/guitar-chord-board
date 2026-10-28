@@ -1,6 +1,15 @@
-import type { SectionKind, Song, SongItem, SongLine } from "../types/song";
+import type { BarStyle, SectionKind, Song, SongItem, SongLine } from "../types/song";
 import { SECTION_LABELS } from "../types/song";
 import { createId } from "../utils/createId";
+import { KEY_OPTIONS } from "./chordTranspose";
+import {
+  MAX_MELODY_LENGTH,
+  MAX_MELODY_LINE_LENGTH,
+  distributeTokens,
+  formatTokens,
+  parseMelody,
+  totalBeats,
+} from "./melody";
 
 export const MAX_TITLE_LENGTH = 60;
 export const MAX_LYRIC_LENGTH = 240;
@@ -187,13 +196,19 @@ export function autoBarIds(song: Song): Set<string> {
   return result;
 }
 
-/** 實際要畫的小節線（自動＋手動，扣掉被取消的）。 */
+/** 全曲最後一個和弦（沒有和弦時為 undefined）。 */
+function lastItem(song: Song): SongItem | undefined {
+  return allItems(song).slice(-1)[0];
+}
+
+/** 實際要畫的小節線（自動＋手動＋全曲最後的終止線，扣掉被取消的）。 */
 export function effectiveBarIds(song: Song): Set<string> {
   const auto = autoBarIds(song);
+  const last = lastItem(song);
   const result = new Set<string>();
 
   for (const item of allItems(song)) {
-    if (!item.noBar && (item.bar || auto.has(item.id))) {
+    if (!item.noBar && (item.bar || auto.has(item.id) || item === last)) {
       result.add(item.id);
     }
   }
@@ -212,7 +227,8 @@ export function toggleBar(song: Song, itemId: string): Song {
   const hasBar = effectiveBarIds(song).has(itemId);
 
   if (hasBar) {
-    return updateItem(song, itemId, { bar: false, noBar: autoBarIds(song).has(itemId) ? true : undefined });
+    const forced = autoBarIds(song).has(itemId) || lastItem(song)?.id === itemId;
+    return updateItem(song, itemId, { bar: false, noBar: forced ? true : undefined });
   }
 
   return updateItem(song, itemId, { bar: true, noBar: undefined });
@@ -222,13 +238,44 @@ export function setBeats(song: Song, itemId: string, beats: number | undefined):
   return updateItem(song, itemId, { beats: beats !== undefined && isValidBeats(beats) ? beats : undefined });
 }
 
-/** 「D 大調 2/4」這樣的標題文字。 */
+/** 這首歌有沒有任何旋律。 */
+export function hasMelody(song: Song): boolean {
+  return song.lines.some((line) => line.items.some((item) => (item.melody ?? "").trim() !== ""));
+}
+
+function keyName(value: string): string {
+  return value.replace("#", "♯").replace(/b$/, "♭");
+}
+
+/** 小調歌曲的簡譜寫在關係大調上（A 小調 → 1=C）。 */
+function melodyTonic(song: Song): string | null {
+  if (!song.key) {
+    return null;
+  }
+
+  if (song.mode !== "minor") {
+    return song.key;
+  }
+
+  const source = KEY_OPTIONS.find((option) => option.value === song.key);
+  const relative = source && KEY_OPTIONS.find((option) => option.pitchClass === (source.pitchClass + 3) % 12);
+  return relative ? relative.value : null;
+}
+
+/** 「D 大調 2/4」這樣的標題文字；有旋律時加上簡譜的「1=D」。 */
 export function songMeta(song: Song): string {
   const parts: string[] = [];
 
   if (song.key) {
-    const note = song.key.replace("#", "♯").replace(/b$/, "♭");
-    parts.push(`${note} ${song.mode === "minor" ? "小調" : "大調"}`);
+    parts.push(`${keyName(song.key)} ${song.mode === "minor" ? "小調" : "大調"}`);
+
+    const tonic = hasMelody(song) ? melodyTonic(song) : null;
+    if (tonic && song.mode === "minor") {
+      parts.push(`1=${keyName(tonic)}`);
+    } else if (tonic) {
+      // 大調：「D 大調」已經說明 1=D，改寫成簡譜歌本常見的寫法。
+      parts[0] = `1=${keyName(tonic)}`;
+    }
   }
 
   if (song.timeSignature) {
@@ -236,6 +283,93 @@ export function songMeta(song: Song): string {
   }
 
   return parts.join(" ");
+}
+
+/* ---------- 旋律、小節線樣式 ---------- */
+
+/** 一個和弦能放幾拍旋律：個別拍數 → 預設拍數 → 拍號分子 → 4。 */
+export function itemCapacity(song: Song, item: SongItem): number {
+  return itemBeats(song, item) ?? measureBeats(song.timeSignature) ?? 4;
+}
+
+/** 一行的旋律文字（各和弦的旋律依序接起來）。 */
+export function lineMelodyText(line: SongLine): string {
+  return line.items
+    .map((item) => (item.melody ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** 設定一行的旋律：依各和弦的拍數自動切到每個和弦。 */
+export function setLineMelody(song: Song, lineId: string, text: string): Song {
+  const line = song.lines.find((entry) => entry.id === lineId);
+
+  if (!line || line.items.length === 0) {
+    return song;
+  }
+
+  const { tokens } = parseMelody(text.slice(0, MAX_MELODY_LINE_LENGTH));
+  const parts = distributeTokens(
+    tokens,
+    line.items.map((item) => itemCapacity(song, item)),
+  );
+
+  return updateLine(song, lineId, (current) => ({
+    ...current,
+    items: current.items.map((item, index) => {
+      const { melody: _old, ...rest } = item;
+      void _old;
+      const segment = formatTokens(parts[index] ?? []).slice(0, MAX_MELODY_LENGTH * 2);
+      return segment ? { ...rest, melody: segment } : rest;
+    }),
+  }));
+}
+
+export interface MelodyCellStatus {
+  itemId: string;
+  /** 旋律拍數 */
+  have: number;
+  /** 和弦拍數 */
+  capacity: number;
+}
+
+export interface LineMelodyStatus {
+  cells: MelodyCellStatus[];
+  /** 有任何和弦的旋律拍數與和弦拍數不一致 */
+  mismatch: boolean;
+  haveTotal: number;
+  capacityTotal: number;
+}
+
+export function lineMelodyStatus(song: Song, line: SongLine): LineMelodyStatus {
+  const cells = line.items.map((item) => ({
+    itemId: item.id,
+    have: totalBeats(parseMelody(item.melody ?? "").tokens),
+    capacity: itemCapacity(song, item),
+  }));
+  const hasAny = cells.some((cell) => cell.have > 0);
+
+  return {
+    cells,
+    mismatch: hasAny && cells.some((cell) => Math.abs(cell.have - cell.capacity) > 1e-6),
+    haveTotal: cells.reduce((sum, cell) => sum + cell.have, 0),
+    capacityTotal: cells.reduce((sum, cell) => sum + cell.capacity, 0),
+  };
+}
+
+export const MAX_ENDING = 3;
+
+export function setBarStyle(song: Song, itemId: string, style: BarStyle | undefined): Song {
+  return updateItem(song, itemId, { barStyle: style });
+}
+
+export function setRepeatStart(song: Song, itemId: string, on: boolean): Song {
+  return updateItem(song, itemId, { repeatStart: on ? true : undefined });
+}
+
+export function setEnding(song: Song, itemId: string, ending: number | undefined): Song {
+  const valid = ending !== undefined && Number.isInteger(ending) && ending >= 1 && ending <= MAX_ENDING;
+  return updateItem(song, itemId, { ending: valid ? ending : undefined });
 }
 
 export function setBar(song: Song, itemId: string, bar: boolean): Song {

@@ -1,9 +1,11 @@
-import type { SectionKind, Song, SongItem, SongLine } from "../types/song";
-import { SECTION_KINDS } from "../types/song";
+import type { BarStyle, SectionKind, Song, SongItem, SongLine } from "../types/song";
+import { BAR_STYLES, SECTION_KINDS } from "../types/song";
 import { createId } from "../utils/createId";
 import { KEY_OPTIONS } from "./chordTranspose";
 import { getChordTheory } from "./chordTheory";
+import { MAX_MELODY_LENGTH } from "./melody";
 import {
+  MAX_ENDING,
   MAX_ITEMS_PER_LINE,
   MAX_ITEMS_TOTAL,
   MAX_LABEL_LENGTH,
@@ -59,6 +61,10 @@ interface SerializedChord {
   nobar?: boolean;
   beats?: number;
   shape?: string;
+  mel?: string;
+  bs?: BarStyle;
+  rs?: boolean;
+  end?: number;
 }
 
 interface SerializedLine {
@@ -103,9 +109,23 @@ export function serializeSong(song: Song): SerializedSong {
         ...(item.noBar ? { nobar: true } : {}),
         ...(item.beats ? { beats: item.beats } : {}),
         ...(item.shapeId ? { shape: item.shapeId } : {}),
+        ...(item.melody ? { mel: item.melody } : {}),
+        ...(item.barStyle ? { bs: item.barStyle } : {}),
+        ...(item.repeatStart ? { rs: true } : {}),
+        ...(item.ending ? { end: item.ending } : {}),
       })),
     })),
   };
+}
+
+/** 旋律文字只留簡譜語法會用到的字元，並限制長度。 */
+function cleanMelody(value: unknown): { melody?: string } {
+  if (typeof value !== "string") {
+    return {};
+  }
+
+  const text = value.replace(/[^0-7#bn'_,.()\- |]/g, "").replace(/\s+/g, " ").trim().slice(0, MAX_MELODY_LENGTH * 2);
+  return text ? { melody: text } : {};
 }
 
 function asString(value: unknown, maxLength: number): string {
@@ -172,6 +192,12 @@ export function sanitizeSong(raw: unknown): Song | null {
           ...(isValidBeats(chord.beats) ? { beats: chord.beats } : {}),
           ...(typeof chord.shape === "string" && chord.shape.length <= 80
             ? { shapeId: chord.shape }
+            : {}),
+          ...cleanMelody(chord.mel),
+          ...(BAR_STYLES.includes(chord.bs as BarStyle) ? { barStyle: chord.bs as BarStyle } : {}),
+          ...(chord.rs === true ? { repeatStart: true } : {}),
+          ...(Number.isInteger(chord.end) && (chord.end as number) >= 1 && (chord.end as number) <= MAX_ENDING
+            ? { ending: chord.end as number }
             : {}),
         });
       }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import type { Song } from "../../types/song";
-import { songMeta } from "../../services/songModel";
+import { hasMelody, songMeta } from "../../services/songModel";
 import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "./LeadSheet";
 import type { DiagramMode, DiagramSize } from "./LeadSheet";
 
@@ -25,6 +25,7 @@ export function PerformView({ song, onExit }: PerformViewProps) {
   const [scaleIndex, setScaleIndex] = usePersistentState<number>("guitar-chord-board:perform-scale", 2);
   const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:perform-diagram-mode", "first");
+  const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
   const [markedLineId, setMarkedLineId] = useState<string | null>(null);
   const [wake, setWake] = useState<WakeStatus>("off");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -170,6 +171,17 @@ export function PerformView({ song, onExit }: PerformViewProps) {
               圖：{DIAGRAM_SIZES[diagramSize].label}
             </button>
           )}
+          {hasMelody(song) && (
+            <button
+              type="button"
+              className={`perform__btn${showMelody ? " is-active" : ""}`}
+              aria-pressed={showMelody}
+              onClick={() => setShowMelody(!showMelody)}
+              title="顯示或隱藏簡譜旋律"
+            >
+              旋律：{showMelody ? "開" : "關"}
+            </button>
+          )}
           {canFullscreen && (
             <button type="button" className="perform__btn" onClick={toggleFullscreen}>
               {isFullscreen ? "退出全螢幕" : "全螢幕"}
@@ -184,6 +196,7 @@ export function PerformView({ song, onExit }: PerformViewProps) {
           diagramMode={diagramMode}
           diagramWidth={Math.round(DIAGRAM_SIZES[diagramSize].width * scale)}
           large
+          showMelody={showMelody}
           markedLineId={markedLineId}
           onLineClick={toggleLine}
         />
