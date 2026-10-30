@@ -1,0 +1,416 @@
+/* 和弦編排第二步：精簡總覽與移調 */
+.mode-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.mode-tabs button {
+  white-space: nowrap;
+}
+
+.workspace--overview {
+  padding-top: 26px;
+}
+
+.song-overview-summary {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(23, 25, 35, 0.78);
+}
+
+.song-overview-summary strong {
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.song-overview-summary span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.song-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.song-overview-item {
+  position: relative;
+  min-width: 0;
+}
+
+.song-overview-number {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  left: -7px;
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #17130b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.24);
+}
+
+.song-overview-grid .chord-card--compact {
+  min-width: 0;
+  height: 100%;
+}
+
+.song-overview-grid .chord-card--compact .chord-card__header {
+  min-height: 48px;
+}
+
+.song-overview-grid .chord-card--compact .chord-diagram {
+  width: min(100%, 136px);
+}
+
+@media (max-width: 700px) {
+  .mode-tabs button {
+    padding-inline: 10px;
+    font-size: 0.78rem;
+  }
+
+  .workspace--overview .workspace__intro > p:last-child {
+    font-size: 0.88rem;
+  }
+
+  .song-overview-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .song-overview-summary span {
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .song-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .song-overview-grid .chord-card--compact {
+    padding: 10px;
+    border-radius: 15px;
+  }
+
+  .song-overview-grid .chord-card--compact h3 {
+    font-size: 1.15rem;
+  }
+
+  .song-overview-grid .chord-card--compact .eyebrow {
+    font-size: 0.52rem;
+  }
+
+  .song-overview-number {
+    top: -5px;
+    left: -5px;
+    width: 25px;
+    height: 25px;
+    font-size: 0.66rem;
+  }
+}
+
+/* 和弦編排第一步：選中的和弦顯示 12 種和弦類型 */
+.chord-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.chord-type-option {
+  min-width: 0;
+}
+
+.chord-type-option .chord-card--compact {
+  min-width: 0;
+  height: 100%;
+}
+
+.chord-type-option.is-current .chord-card {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(233, 185, 73, 0.28);
+}
+
+.chord-type-option.is-current .eyebrow,
+.chord-type-option.is-current h3 {
+  color: var(--accent-strong);
+}
+
+@media (max-width: 900px) {
+  .chord-type-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  }
+
+  .chord-type-grid .chord-card--compact {
+    flex: initial;
+    scroll-snap-align: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .chord-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .chord-type-grid .chord-card--compact {
+    padding: 10px;
+    border-radius: 15px;
+  }
+
+  .chord-type-grid .chord-card--compact h3 {
+    font-size: 1.15rem;
+  }
+
+  .chord-type-grid .chord-card--compact .eyebrow {
+    font-size: 0.52rem;
+    line-height: 1.35;
+  }
+}
+
+/* 和弦編排第二步：移調控制 */
+.overview-transpose-panel {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(23, 25, 35, 0.84);
+}
+
+.overview-transpose-panel__heading {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.overview-transpose-panel__heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.overview-transpose-status {
+  padding: 7px 10px;
+  border: 1px solid rgba(233, 185, 73, 0.45);
+  border-radius: 999px;
+  background: rgba(233, 185, 73, 0.1);
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.overview-transpose-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: end;
+  gap: 14px;
+}
+
+.overview-key-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.overview-key-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.overview-key-field__label > span {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.overview-key-field select {
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(16, 18, 26, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.overview-key-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(233, 185, 73, 0.14);
+}
+
+
+.overview-transpose-arrow {
+  padding-bottom: 15px;
+  color: var(--accent-strong);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.overview-transpose-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.overview-transpose-actions .primary-button,
+.overview-transpose-actions .secondary-button {
+  min-height: 46px;
+}
+
+.overview-transpose-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 600px) {
+  .overview-transpose-panel {
+    padding: 14px;
+  }
+
+  .overview-transpose-panel__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  /* 原調、箭頭、目標調改成左右排列 */
+  .overview-transpose-controls {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    align-items: end;
+    gap: 10px;
+  }
+
+  .overview-key-field {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  /* ♫ 原調、⇄ 目標調置中顯示在方框上方 */
+  .overview-key-field__label {
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .overview-key-field__label > span {
+    font-size: 1rem;
+  }
+
+  /* 原調與目標調改成接近正方形的金色圓角框 */
+  .overview-key-field select {
+    width: 100%;
+    aspect-ratio: 1 / 0.78;
+    min-height: 0;
+    padding: 10px;
+    border: 1px solid rgba(233, 185, 73, 0.65);
+    border-radius: 20px;
+    background: var(--accent);
+    color: #17130b;
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+    text-align-last: center;
+    cursor: pointer;
+  }
+
+  .overview-key-field select:focus {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 3px rgba(233, 185, 73, 0.2);
+  }
+
+  /* 中間維持向右箭頭，不再旋轉 */
+  .overview-transpose-arrow {
+    align-self: end;
+    padding: 0 0 26px;
+    color: var(--accent-strong);
+    font-size: 2rem;
+    line-height: 1;
+    text-align: center;
+    transform: none;
+  }
+
+  .overview-transpose-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .overview-transpose-actions .primary-button,
+  .overview-transpose-actions .secondary-button {
+    width: 100%;
+  }
+}
+
+.transpose-apply-button,
+.transpose-reset-button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 11px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.transpose-apply-button {
+  border-color: rgba(233, 185, 73, 0.72);
+  background: rgba(233, 185, 73, 0.1);
+  color: var(--accent);
+}
+
+.transpose-apply-button:hover:not(:disabled) {
+  background: rgba(233, 185, 73, 0.2);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.transpose-reset-button {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+}
+
+.transpose-reset-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.transpose-apply-button:disabled,
+.transpose-reset-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -1,0 +1,1604 @@
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Noto Sans TC", sans-serif;
+  color: #f7f7fb;
+  background: #0f1118;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --surface: #171923;
+  --surface-2: #20232f;
+  --surface-3: #292d3a;
+  --text: #f7f7fb;
+  --muted: #a7adbe;
+  --line: #343948;
+  --accent: #e9b949;
+  --accent-strong: #ffd166;
+  --danger: #ff7b7b;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: #0f1118;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% -20%, rgba(233, 185, 73, 0.17), transparent 35%),
+    radial-gradient(circle at 100% 20%, rgba(98, 86, 190, 0.18), transparent 28%),
+    #0f1118;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.55);
+  outline-offset: 3px;
+}
+
+.app-shell {
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.site-header {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #1a1710;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  box-shadow: 0 10px 30px rgba(233, 185, 73, 0.22);
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.brand small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.github-link {
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  padding: 9px 14px;
+  border-radius: 999px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.github-link:hover {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.08);
+}
+
+.hero {
+  padding: 72px 0 50px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+  gap: 48px;
+  align-items: end;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(2.8rem, 7vw, 6.3rem);
+  line-height: 0.94;
+  letter-spacing: -0.065em;
+}
+
+.hero__copy {
+  max-width: 660px;
+  margin: 26px 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.7vw, 1.2rem);
+  line-height: 1.8;
+}
+
+.hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.hero__stats div {
+  min-height: 112px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(23, 25, 35, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+}
+
+.hero__stats strong {
+  color: var(--accent-strong);
+  font-size: 1.55rem;
+}
+
+.hero__stats span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.mode-tabs {
+  display: inline-flex;
+  padding: 5px;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.mode-tabs button {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  padding: 12px 18px;
+  border-radius: 11px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mode-tabs button.is-active {
+  background: var(--accent);
+  color: #19160f;
+}
+
+.workspace {
+  padding: 34px 0 72px;
+}
+
+.workspace__intro {
+  margin-bottom: 24px;
+}
+
+.workspace__intro h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  letter-spacing: -0.035em;
+}
+
+.workspace__intro > p:last-child {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.search-panel {
+  padding: 22px;
+  background: rgba(23, 25, 35, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.search-panel > label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.search-row {
+  display: flex;
+  gap: 10px;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #10121a;
+  color: var(--text);
+  border-radius: 13px;
+}
+
+input {
+  min-height: 52px;
+  padding: 0 16px;
+}
+
+textarea {
+  min-height: 118px;
+  padding: 15px 16px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #747b8d;
+}
+
+.primary-button {
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--accent);
+  color: #17130b;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.primary-button:hover {
+  background: var(--accent-strong);
+}
+
+.input-help {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.song-options {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: 17px;
+  min-height: 17px;
+  accent-color: var(--accent);
+}
+
+.single-result {
+  margin-top: 24px;
+  max-width: 420px;
+}
+
+.chord-card {
+  width: 100%;
+  padding: 22px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.chord-card__header {
+  min-height: 62px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.chord-card h3 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+}
+
+.chord-card__name {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.difficulty {
+  white-space: nowrap;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(233, 185, 73, 0.1);
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chord-diagram {
+  display: block;
+  max-width: 100%;
+  margin: 12px auto 0;
+}
+
+.diagram-string,
+.diagram-fret {
+  stroke: #767d90;
+  stroke-width: 1.7;
+}
+
+.diagram-nut {
+  stroke: #f5f1e8;
+  stroke-width: 5;
+}
+
+.diagram-marker {
+  fill: #d8dbe5;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.diagram-base-fret {
+  fill: var(--accent-strong);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.diagram-string-name {
+  fill: #9198aa;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diagram-dot {
+  fill: var(--accent);
+  stroke: #f8dc94;
+  stroke-width: 1.5;
+}
+
+.diagram-barre {
+  stroke: var(--accent);
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+
+.diagram-finger {
+  fill: #16130c;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chord-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.chord-card__meta > div {
+  min-height: 68px;
+  padding: 12px;
+  border-radius: 13px;
+  background: var(--surface-2);
+}
+
+.meta-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.chord-card__meta strong {
+  font-size: 0.9rem;
+}
+
+.empty-diagram {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  margin: 14px 0;
+}
+
+.song-list {
+  margin-top: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.song-row {
+  display: grid;
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 25px;
+  background: rgba(23, 25, 35, 0.72);
+}
+
+.song-row__main {
+  position: relative;
+}
+
+.song-row__number {
+  position: absolute;
+  z-index: 1;
+  top: -8px;
+  left: -8px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #17130b;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.song-row__related {
+  min-width: 0;
+  padding: 8px 2px;
+}
+
+.related-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 0 6px 16px;
+}
+
+.related-heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.related-heading > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.related-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.chord-card--button {
+  appearance: none;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.chord-card--button:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.chord-card--compact {
+  min-width: 150px;
+  padding: 14px;
+  border-radius: 17px;
+  box-shadow: none;
+}
+
+.chord-card--compact .chord-card__header {
+  min-height: auto;
+}
+
+.chord-card--compact h3 {
+  font-size: 1.35rem;
+}
+
+.chord-card--compact .eyebrow {
+  font-size: 0.58rem;
+}
+
+.chord-card--compact .chord-diagram {
+  margin-top: 2px;
+}
+
+.notice {
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 16px;
+}
+
+.notice--error {
+  margin-top: 24px;
+  border-color: rgba(255, 123, 123, 0.5);
+  color: var(--danger);
+}
+
+footer {
+  min-height: 88px;
+  padding: 22px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero__stats {
+    max-width: 560px;
+  }
+
+  .song-row {
+    grid-template-columns: 1fr;
+  }
+
+  .related-scroll {
+    display: flex;
+    overflow-x: auto;
+    padding: 2px 2px 14px;
+    scroll-snap-type: x proximity;
+  }
+
+  .chord-card--compact {
+    flex: 0 0 160px;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-shell {
+    width: min(100% - 22px, 1280px);
+  }
+
+  .site-header {
+    min-height: 76px;
+  }
+
+  .brand small,
+  .github-link {
+    display: none;
+  }
+
+  .hero {
+    padding: 52px 0 34px;
+    gap: 30px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.7rem, 16vw, 4.5rem);
+  }
+
+  .hero__stats {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .hero__stats div {
+    min-height: 92px;
+    padding: 13px;
+  }
+
+  .mode-tabs {
+    width: 100%;
+  }
+
+  .mode-tabs button {
+    flex: 1;
+    padding-inline: 10px;
+    font-size: 0.85rem;
+  }
+
+  .search-row {
+    flex-direction: column;
+  }
+
+  .primary-button {
+    width: 100%;
+  }
+
+  .song-row {
+    padding: 10px;
+  }
+
+  .related-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* 0.2.0：多把位、同音異名與手機操作改善 */
+.chord-card__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.position-badge {
+  white-space: nowrap;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chord-card__alias {
+  margin: 7px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shape-selector {
+  margin: 4px 0 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(16, 18, 26, 0.66);
+}
+
+.shape-selector__buttons {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.shape-selector__buttons button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.shape-selector__buttons button:hover,
+.shape-selector__buttons button.is-active {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.14);
+  color: var(--accent-strong);
+}
+
+.finger-legend {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.song-row__main .chord-card {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.related-scroll {
+  scrollbar-color: var(--line) transparent;
+}
+
+@media (max-width: 600px) {
+  .workspace {
+    padding-top: 26px;
+  }
+
+  .search-panel,
+  .chord-card {
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .chord-card__header {
+    min-height: 56px;
+  }
+
+  .chord-card h3 {
+    font-size: 1.7rem;
+  }
+
+  .chord-card__badges {
+    gap: 5px;
+  }
+
+  .position-badge,
+  .difficulty {
+    padding: 6px 8px;
+    font-size: 0.66rem;
+  }
+
+  .chord-card__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-card__meta > div {
+    min-height: 58px;
+  }
+
+  .empty-diagram {
+    min-height: 190px;
+    padding: 18px;
+    text-align: center;
+  }
+
+  .song-options {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .related-scroll {
+    margin-inline: -4px;
+    scroll-padding-inline: 4px;
+  }
+
+  .chord-card--compact {
+    flex-basis: 148px;
+    padding: 12px;
+  }
+}
+
+/* 0.2.1：單一和弦快速查詢，讓輸入框與結果優先出現在畫面上方 */
+.hero {
+  display: block;
+  padding: 24px 0 18px;
+}
+
+.hero h1 {
+  max-width: none;
+  font-size: clamp(1.55rem, 3.6vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+.workspace--single {
+  padding: 20px 0 72px;
+}
+
+.single-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(360px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.single-search-column,
+.single-result-region {
+  min-width: 0;
+}
+
+.workspace--single .workspace__intro {
+  margin-bottom: 12px;
+}
+
+.workspace--single .workspace__intro h2 {
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+}
+
+.workspace--single .search-panel {
+  padding: 18px;
+}
+
+.workspace--single .single-result {
+  max-width: 420px;
+  margin-top: 0;
+}
+
+.workspace--single .notice--error {
+  margin-top: 0;
+}
+
+.single-result-region {
+  scroll-margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .single-workspace-grid {
+    grid-template-columns: minmax(250px, 0.7fr) minmax(330px, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .site-header {
+    min-height: 68px;
+  }
+
+  .hero {
+    padding: 16px 0 14px;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.62rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.35rem, 7vw, 2rem);
+    line-height: 1.12;
+  }
+
+  .workspace--single {
+    padding-top: 14px;
+  }
+
+  .single-workspace-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .workspace--single .workspace__intro {
+    margin-bottom: 9px;
+  }
+
+  .workspace--single .workspace__intro h2 {
+    font-size: 1.35rem;
+  }
+
+  .workspace--single .search-panel {
+    padding: 14px;
+  }
+
+  .workspace--single .search-row {
+    flex-direction: row;
+  }
+
+  .workspace--single .search-row input {
+    min-width: 0;
+  }
+
+  .workspace--single .primary-button {
+    width: auto;
+    padding-inline: 15px;
+  }
+
+  .workspace--single .input-help {
+    display: none;
+  }
+
+  .workspace--single .single-result {
+    margin-top: 0;
+  }
+
+  .single-result-region {
+    scroll-margin-top: 8px;
+  }
+}
+
+/* 0.2.2：單一和弦改為選單組合，加入和弦類型聽感描述 */
+select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 42px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #10121a;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+select:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.55);
+  outline-offset: 3px;
+}
+
+.chord-builder__controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.chord-select-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.chord-select-field > span {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.chord-select-field--type {
+  grid-column: 1 / -1;
+}
+
+.chord-builder__summary {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.chord-builder__selection,
+.chord-feeling {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(16, 18, 26, 0.72);
+}
+
+.chord-builder__selection {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 3px;
+}
+
+.chord-builder__selection > span,
+.chord-feeling > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chord-builder__selection strong {
+  justify-self: end;
+  color: var(--accent-strong);
+  font-size: 1.8rem;
+  letter-spacing: -0.035em;
+}
+
+.chord-builder__selection small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.chord-feeling p {
+  margin: 7px 0 0;
+  line-height: 1.65;
+}
+
+.chord-builder__submit {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.chord-builder__note {
+  margin: 11px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .chord-builder__controls {
+    gap: 10px;
+  }
+
+  .chord-select-field > span {
+    font-size: 0.76rem;
+  }
+
+  select {
+    min-height: 48px;
+    padding-inline: 12px 34px;
+    font-size: 0.88rem;
+  }
+
+  .workspace--single .chord-builder__submit {
+    width: 100%;
+    padding-inline: 15px;
+  }
+
+  .chord-builder__note {
+    font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .chord-builder__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-select-field--type {
+    grid-column: auto;
+  }
+}
+
+/* 和弦編排第一步：待選區、編排區與拖曳操作 */
+.workspace--song {
+  padding-top: 26px;
+}
+
+.song-arranger {
+  margin-top: 22px;
+  display: grid;
+  gap: 18px;
+}
+
+.song-arranger__section {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(23, 25, 35, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.song-arranger__heading {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.song-arranger__heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.song-arranger__heading > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.palette-heading-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.palette-heading-actions > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.palette-accidental-control {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(16, 18, 26, 0.72);
+}
+
+.palette-accidental-control button {
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.palette-accidental-control button:hover {
+  color: var(--text);
+  background: rgba(233, 185, 73, 0.08);
+}
+
+.palette-accidental-control button.is-active {
+  color: #19160f;
+  background: var(--accent);
+}
+
+.palette-chord-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(70px, 1fr));
+  gap: 10px;
+}
+
+.palette-chord {
+  min-height: 70px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: grab;
+  font-size: 1.35rem;
+  font-weight: 900;
+  touch-action: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.palette-chord:hover {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.1);
+  transform: translateY(-2px);
+}
+
+.palette-chord:active {
+  cursor: grabbing;
+}
+
+.palette-chord.is-dragging {
+  opacity: 0.35;
+}
+
+.arrangement-drop-zone {
+  min-height: 126px;
+  padding: 18px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--line);
+  border-radius: 18px;
+  background: rgba(16, 18, 26, 0.68);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.arrangement-drop-zone.is-over {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.08);
+}
+
+.arrangement-drop-zone.is-dragging:not(.is-over) {
+  border-color: rgba(255, 123, 123, 0.52);
+}
+
+.arranged-chord-list {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.arranged-chord {
+  position: relative;
+  flex: 0 0 auto;
+  touch-action: none;
+}
+
+.arranged-chord__main {
+  min-width: 94px;
+  min-height: 78px;
+  padding: 15px 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: grab;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.arranged-chord__main:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.arranged-chord__main:active {
+  cursor: grabbing;
+}
+
+.arranged-chord__main strong {
+  font-size: 1.4rem;
+}
+
+.arranged-chord__number {
+  position: absolute;
+  top: 7px;
+  left: 9px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.arranged-chord.is-selected .arranged-chord__main {
+  border-color: var(--accent);
+  background: rgba(233, 185, 73, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(233, 185, 73, 0.3);
+}
+
+.arranged-chord.is-selected .arranged-chord__main strong {
+  color: var(--accent-strong);
+}
+
+.arranged-chord.is-dragging {
+  opacity: 0.3;
+}
+
+.arranged-chord__remove {
+  position: absolute;
+  z-index: 3;
+  top: -8px;
+  right: -8px;
+  width: 27px;
+  height: 27px;
+  display: none;
+  place-items: center;
+  border: 1px solid rgba(255, 123, 123, 0.55);
+  border-radius: 50%;
+  background: #2a1c22;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.arrangement-empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+.song-arranger__options {
+  margin-top: 14px;
+}
+
+.drag-overlay-chord {
+  min-width: 94px;
+  min-height: 78px;
+  padding: 15px 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow);
+  font-size: 1.4rem;
+  font-weight: 900;
+  cursor: grabbing;
+}
+
+.selected-chord-editor {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(23, 25, 35, 0.82);
+}
+
+.selected-chord-editor__heading {
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+
+
+
+.selected-chord-editor__heading h3 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.selected-chord-editor__layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.selected-chord-editor__main {
+  min-width: 0;
+}
+
+.selected-chord-editor__types {
+  min-width: 0;
+}
+
+.selected-chord-editor-placeholder {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 17px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (pointer: coarse) {
+  .arranged-chord__remove {
+    display: grid;
+  }
+}
+
+@media (max-width: 900px) {
+  .palette-chord-list {
+    grid-template-columns: repeat(4, minmax(70px, 1fr));
+  }
+
+  .selected-chord-editor__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-chord-editor__main {
+    width: min(100%, 420px);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .song-arranger__section,
+  .selected-chord-editor {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .song-arranger__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .palette-heading-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .palette-heading-actions > span {
+    text-align: left;
+  }
+
+  .palette-accidental-control {
+    width: 100%;
+  }
+
+  .palette-accidental-control button {
+    flex: 1;
+    padding-inline: 7px;
+    font-size: 0.8rem;
+  }
+
+  .song-arranger__heading > span {
+    text-align: left;
+  }
+
+  .palette-chord-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .palette-chord {
+    min-height: 56px;
+    font-size: 1.12rem;
+  }
+
+  .arrangement-drop-zone {
+    min-height: 112px;
+    padding: 13px;
+  }
+
+  .arranged-chord-list {
+    gap: 9px;
+  }
+
+  .arranged-chord__main {
+    min-width: 78px;
+    min-height: 64px;
+    padding: 12px 15px;
+  }
+
+  .arranged-chord__main strong {
+    font-size: 1.16rem;
+  }
+
+  .song-arranger__options {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selected-chord-editor__heading {
+    align-items: flex-start;
+  }
+
+
+
+
+
+  .selected-chord-editor__heading .secondary-button {
+    min-height: 42px;
+  }
+}
+
+/* 主要導覽：單一查詢與和弦編排流程 */
+.main-navigation {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(23, 25, 35, 0.82);
+}
+
+.main-navigation button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.main-navigation__single {
+  flex: 0 0 auto;
+  min-height: 50px;
+  padding: 10px 20px;
+  border-radius: 13px;
+  font-weight: 800;
+}
+
+.main-navigation__divider {
+  width: 1px;
+  margin: 8px 0;
+  flex: 0 0 auto;
+  background: var(--line);
+}
+
+.arrangement-navigation {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.arrangement-navigation__step {
+  min-height: 50px;
+  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 13px;
+  font-weight: 800;
+}
+
+.arrangement-navigation__number {
+  color: var(--accent-strong);
+  font-size: 1rem;
+}
+
+.arrangement-navigation__arrow {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.main-navigation button.is-active {
+  background: var(--accent);
+  color: #19150e;
+}
+
+.main-navigation button.is-active .arrangement-navigation__number {
+  color: inherit;
+}
+
+@media (max-width: 700px) {
+  .main-navigation {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .main-navigation__single {
+    width: 100%;
+  }
+
+  .main-navigation__divider {
+    width: 100%;
+    height: 1px;
+    margin: 0;
+  }
+
+  .arrangement-navigation {
+    width: 100%;
+  }
+
+  .arrangement-navigation__step {
+    min-width: 0;
+    flex: 1;
+    padding-inline: 10px;
+  }
+
+  .arrangement-navigation__arrow {
+    font-size: 1rem;
+  }
+}
+
+
+
+/* 單一和弦查詢的 fr */
+.workspace--single .diagram-base-fret {
+  fill: var(--accent-strong);
+  font-size: 40px;
+  font-weight: 900;
+  transform: translateX(-20px);
+}
+
+/* 建立和弦編排的 fr */
+.workspace--song .diagram-base-fret {
+  fill: var(--accent-strong);
+  font-size: 40px;
+  font-weight: 900;
+  transform: translateX(-20px);
+}
+
+/* 精簡總覽與移調的 fr */
+.chord-card--compact .diagram-base-fret {
+  fill: var(--accent-strong);
+  font-size: 40px;
+  font-weight: 900;
+  transform: translateX(-30px);
+}

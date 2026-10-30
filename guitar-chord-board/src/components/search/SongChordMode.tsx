@@ -1,0 +1,1040 @@
+import type { CollisionDetection, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useState } from "react";
+import {
+  CHORD_TYPE_OPTIONS,
+  ROOT_KEY_OPTIONS,
+  ROOT_NOTES,
+  findRootKeyOption,
+  formatNoteLabel,
+} from "../../data/chordTypes";
+import {
+  MAX_ITEMS_PER_LINE,
+  MAX_ITEMS_TOTAL,
+  MAX_LABEL_LENGTH,
+  MAX_LYRIC_LENGTH,
+  BEAT_CHOICES,
+  MAX_ENDING,
+  MAX_LYRIC_ROWS,
+  addLine,
+  addPaletteChord,
+  countItems,
+  duplicateItem,
+  duplicateLine,
+  effectiveBarIds,
+  effectiveSections,
+  itemBeats,
+  insertChord,
+  locateItem,
+  mergeLineUp,
+  moveItem,
+  moveItemBy,
+  moveLine,
+  removeItem,
+  removeLine,
+  removePaletteChord,
+  uniqueSymbols,
+  replaceSymbol,
+  setBarStyle,
+  setBeats,
+  setEnding,
+  setRepeatStart,
+  toggleBar,
+  setLyric,
+  setSection,
+  setShape,
+  splitLineAfter,
+} from "../../services/songModel";
+import type { Song, SongItem, SongLine } from "../../types/song";
+import { SECTION_KINDS, SECTION_LABELS } from "../../types/song";
+import type { BarStyle, SectionKind } from "../../types/song";
+import { ChordCard } from "../chord/ChordCard";
+import { isValidSymbol } from "../../services/songStorage";
+import { MelodyEditor } from "../song/MelodyEditor";
+import { PasteLyrics } from "../song/PasteLyrics";
+import { ProgressionPresets } from "./ProgressionPresets";
+
+interface SongChordModeProps {
+  song: Song;
+  onChange: (change: (song: Song) => Song, coalesceKey?: string) => void;
+  onApplyProgression: (symbols: string[], lineSize?: number) => void;
+}
+
+interface ActiveDrag {
+  kind: "palette" | "arrangement";
+  symbol: string;
+}
+
+const LINE_PREFIX = "line:";
+const PALETTE_PREFIX = "palette:";
+const CHORD_ROOT_PATTERN = /^([A-G])([#b]?)/;
+
+type PaletteAccidentalMode = "natural" | "flat" | "sharp";
+
+const PALETTE_ROOT_NOTES: Record<PaletteAccidentalMode, readonly string[]> = {
+  natural: ROOT_NOTES,
+  flat: ["B", "Db", "Eb", "E", "Gb", "Ab", "Bb"],
+  sharp: ["C#", "D#", "F", "F#", "G#", "A#", "C"],
+};
+
+function getChordRoot(symbol: string): string | null {
+  const match = symbol.match(CHORD_ROOT_PATTERN);
+  return match ? `${match[1]}${match[2]}` : null;
+}
+
+/**
+ * 碰撞判斷：以手指／滑鼠的位置為準。
+ * 在和弦上方就選那個和弦；落在和弦之間的空隙時，選同一行裡離手指最近的和弦，
+ * 這樣往前或往後拖都一樣好放。
+ */
+const collisionByPointer: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  const onItem = hits.find((hit) => {
+    const id = String(hit.id);
+    return !id.startsWith(LINE_PREFIX) && !id.startsWith(PALETTE_PREFIX);
+  });
+
+  if (onItem) {
+    return [onItem];
+  }
+
+  const zone = hits.find((hit) => String(hit.id).startsWith(LINE_PREFIX));
+  const pointer = args.pointerCoordinates;
+
+  if (!zone || !pointer) {
+    return hits;
+  }
+
+  const lineId = String(zone.id).slice(LINE_PREFIX.length);
+  let best: { id: string; distance: number } | null = null;
+
+  for (const container of args.droppableContainers) {
+    const data = container.data.current;
+
+    if (data?.kind !== "arrangement" || data.lineId !== lineId) {
+      continue;
+    }
+
+    const rect = args.droppableRects.get(container.id);
+
+    if (!rect) {
+      continue;
+    }
+
+    const dx = pointer.x - (rect.left + rect.width / 2);
+    const dy = pointer.y - (rect.top + rect.height / 2);
+    const distance = dx * dx + dy * dy;
+
+    if (!best || distance < best.distance) {
+      best = { id: String(container.id), distance };
+    }
+  }
+
+  return best ? [{ id: best.id }] : [zone];
+};
+
+function pointerPosition(event: DragEndEvent): { x: number; y: number } | null {
+  const origin = event.activatorEvent as Partial<PointerEvent> & Partial<TouchEvent>;
+  const touch = origin.touches?.[0] ?? origin.changedTouches?.[0];
+  const x = typeof origin.clientX === "number" ? origin.clientX : touch?.clientX;
+  const y = typeof origin.clientY === "number" ? origin.clientY : touch?.clientY;
+
+  if (typeof x !== "number" || typeof y !== "number") {
+    return null;
+  }
+
+  return { x: x + event.delta.x, y: y + event.delta.y };
+}
+
+function PaletteChord({ symbol, onAdd, scope }: { symbol: string; onAdd: (symbol: string) => void; scope: string }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `${PALETTE_PREFIX}${scope}:${symbol}`,
+    data: { kind: "palette", symbol },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
+      className={`palette-chord${isDragging ? " is-dragging" : ""}`}
+      type="button"
+      onClick={() => onAdd(symbol)}
+      {...listeners}
+      {...attributes}
+    >
+      {symbol}
+    </button>
+  );
+}
+
+function SortableSongChord({
+  item,
+  lineId,
+  barKind,
+  beats,
+  isSelected,
+  onSelect,
+  onRemove,
+  onLyric,
+}: {
+  item: SongItem;
+  lineId: string;
+  /** 這個和弦後面的小節線樣式（single/double/final/repeat-end），沒有線為 null */
+  barKind: string | null;
+  beats: number | undefined;
+  isSelected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+  onLyric: (lyric: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    data: { kind: "arrangement", symbol: item.symbol, itemId: item.id, lineId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`arranged-chord${isSelected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}${
+        barKind ? ` has-bar bar-${barKind}` : ""
+      }${item.repeatStart ? " has-repeat-start" : ""}`}
+    >
+      <div className="arranged-chord__top">
+        <button type="button" className="arranged-chord__main" onClick={onSelect} {...attributes} {...listeners}>
+          <strong>{item.symbol}</strong>
+          {beats !== undefined && (
+            <small className={`arranged-chord__beats${item.beats ? " is-custom" : ""}`}>{beats}拍</small>
+          )}
+          {item.ending !== undefined && <small className="arranged-chord__ending">房{item.ending}.</small>}
+        </button>
+
+        <button
+          type="button"
+          className="arranged-chord__remove"
+          onClick={onRemove}
+          aria-label={`移除 ${item.symbol}`}
+        >
+          ×
+        </button>
+      </div>
+
+      <textarea
+        className="arranged-chord__lyric"
+        value={item.lyric}
+        rows={Math.min(Math.max(item.lyric.split("\n").length, 1), MAX_LYRIC_ROWS)}
+        maxLength={MAX_LYRIC_LENGTH}
+        placeholder="歌詞"
+        title="按 Enter 換行：每一行代表一節（第 1 節、第 2 節…）"
+        aria-label={`${item.symbol} 的歌詞`}
+        onChange={(event) => onLyric(event.target.value)}
+      />
+    </div>
+  );
+}
+
+function LineDropZone({ lineId, isActive, children }: { lineId: string; isActive: boolean; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${LINE_PREFIX}${lineId}`, data: { kind: "line", lineId } });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`arrangement-drop-zone line-drop-zone${isOver ? " is-over" : ""}${isActive ? " is-active" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function getPointerInsertionIndex(event: DragEndEvent, overIndex: number): number {
+  const activeRect = event.active.rect.current.translated;
+  const overRect = event.over?.rect;
+
+  if (!activeRect || !overRect) {
+    return overIndex;
+  }
+
+  const activeCenterX = activeRect.left + activeRect.width / 2;
+  const activeCenterY = activeRect.top + activeRect.height / 2;
+  const overCenterX = overRect.left + overRect.width / 2;
+  const overCenterY = overRect.top + overRect.height / 2;
+
+  const isBelow = activeCenterY > overCenterY + overRect.height * 0.25;
+  const isSameRow = Math.abs(activeCenterY - overCenterY) < overRect.height * 0.65;
+  const isAfterOnSameRow = isSameRow && activeCenterX > overCenterX;
+
+  return overIndex + (isBelow || isAfterOnSameRow ? 1 : 0);
+}
+
+function LineHeader({
+  line,
+  index,
+  total,
+  inherited,
+  onChange,
+}: {
+  line: SongLine;
+  index: number;
+  total: number;
+  inherited: string | null;
+  onChange: SongChordModeProps["onChange"];
+}) {
+  return (
+    <div className="line-head">
+      <span className="line-head__number">第 {index + 1} 行</span>
+
+      <select
+        className="line-head__section"
+        value={line.section}
+        aria-label={`第 ${index + 1} 行的段落標籤`}
+        onChange={(event) =>
+          onChange((song) => setSection(song, line.id, event.target.value as SectionKind, line.customLabel))
+        }
+      >
+        {SECTION_KINDS.map((kind) => (
+          <option key={kind} value={kind}>
+            {SECTION_LABELS[kind]}
+          </option>
+        ))}
+      </select>
+
+      {line.section === "custom" && (
+        <input
+          className="line-head__custom"
+          type="text"
+          value={line.customLabel}
+          maxLength={MAX_LABEL_LENGTH}
+          placeholder="例如：Solo"
+          aria-label="自訂段落名稱"
+          onChange={(event) =>
+            onChange((song) => setSection(song, line.id, "custom", event.target.value), `label:${line.id}`)
+          }
+        />
+      )}
+
+      {line.section === "" && inherited && <span className="line-head__inherit">（接續{inherited}）</span>}
+
+      <span className="line-head__actions">
+        <button
+          type="button"
+          onClick={() => onChange((song) => moveLine(song, line.id, -1))}
+          disabled={index === 0}
+          aria-label="這一行上移"
+          title="上移"
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange((song) => moveLine(song, line.id, 1))}
+          disabled={index === total - 1}
+          aria-label="這一行下移"
+          title="下移"
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange((song) => duplicateLine(song, line.id)?.song ?? song)}
+          aria-label="複製這一行"
+          title="複製這一行（含歌詞）"
+        >
+          複製行
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange((song) => mergeLineUp(song, line.id))}
+          disabled={index === 0}
+          aria-label="合併到上一行"
+          title="合併到上一行"
+        >
+          併上行
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange((song) => removeLine(song, line.id))}
+          aria-label="刪除這一行"
+          title="刪除這一行"
+        >
+          刪除行
+        </button>
+      </span>
+    </div>
+  );
+}
+
+export function SongChordMode({ song, onChange, onApplyProgression }: SongChordModeProps) {
+  const [paletteAccidentalMode, setPaletteAccidentalMode] = useState<PaletteAccidentalMode>("natural");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [activeLineId, setActiveLineId] = useState<string | null>(null);
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const [notice, setNotice] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+  const [builderRoot, setBuilderRoot] = useState("C");
+  const [builderType, setBuilderType] = useState("");
+  const [builderBass, setBuilderBass] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const sections = effectiveSections(song);
+  const bars = effectiveBarIds(song);
+  const total = countItems(song);
+  const lastItemId = [...song.lines].reverse().find((entry) => entry.items.length > 0)?.items.slice(-1)[0]?.id;
+  const selected = selectedItemId ? locateItem(song, selectedItemId) : null;
+  const selectedItem = selected?.item ?? null;
+  const selectedRoot = selectedItem ? getChordRoot(selectedItem.symbol) : null;
+  const [selectedBaseSymbol, selectedBassNote] = selectedItem ? selectedItem.symbol.split("/") : ["", undefined];
+  const selectedRootPitchClass = selectedRoot ? findRootKeyOption(selectedRoot)?.pitchClass : undefined;
+  const paletteRootNotes = PALETTE_ROOT_NOTES[paletteAccidentalMode];
+  const builderSymbol = `${builderRoot}${builderType}${builderBass && builderBass !== builderRoot ? `/${builderBass}` : ""}`;
+
+  useEffect(() => {
+    if (selectedItemId && !locateItem(song, selectedItemId)) {
+      setSelectedItemId(null);
+    }
+  }, [song, selectedItemId]);
+
+  function targetLineId(): string {
+    if (selected) return selected.line.id;
+    if (activeLineId && song.lines.some((line) => line.id === activeLineId)) return activeLineId;
+    return song.lines[song.lines.length - 1].id;
+  }
+
+  function limitReached(lineId: string): boolean {
+    const line = song.lines.find((entry) => entry.id === lineId);
+
+    if (total >= MAX_ITEMS_TOTAL || (line && line.items.length >= MAX_ITEMS_PER_LINE)) {
+      setNotice("這一行或整首歌的和弦數已達上限。");
+      return true;
+    }
+
+    setNotice("");
+    return false;
+  }
+
+  function addChord(symbol: string, lineId?: string, index?: number) {
+    const target = lineId ?? targetLineId();
+
+    if (limitReached(target)) return;
+
+    // 有選取和弦時，點擊待選區的和弦會插在它後面，方便連續輸入。
+    const at = index ?? (selected && !lineId ? selected.itemIndex + 1 : undefined);
+    const result = insertChord(song, symbol, target, at);
+    onChange(() => result.song);
+    setSelectedItemId(result.itemId);
+    setActiveLineId(target);
+  }
+
+  function removeChord(itemId: string) {
+    onChange((current) => removeItem(current, itemId));
+
+    if (selectedItemId === itemId) {
+      setSelectedItemId(null);
+    }
+  }
+
+  function duplicateSelected() {
+    if (!selectedItemId) return;
+
+    if (limitReached(selected?.line.id ?? "")) return;
+
+    const result = duplicateItem(song, selectedItemId);
+
+    if (result) {
+      onChange(() => result.song);
+      setSelectedItemId(result.itemId);
+    }
+  }
+
+  function splitAfterSelected() {
+    if (!selectedItemId) return;
+    const result = splitLineAfter(song, selectedItemId);
+
+    if (result) {
+      onChange(() => result.song);
+      setActiveLineId(result.lineId);
+      setNotice("");
+    } else {
+      setNotice("行數已達上限。");
+    }
+  }
+
+  function addNewLine() {
+    const afterId = selected?.line.id ?? activeLineId ?? undefined;
+    const result = addLine(song, afterId);
+
+    if (result) {
+      onChange(() => result.song);
+      setActiveLineId(result.lineId);
+      setSelectedItemId(null);
+      setNotice("");
+    } else {
+      setNotice("行數已達上限。");
+    }
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current;
+
+    if (!data) return;
+
+    setActiveDrag({
+      kind: data.kind === "palette" ? "palette" : "arrangement",
+      symbol: String(data.symbol ?? ""),
+    });
+  }
+
+  function resolveTarget(event: DragEndEvent): { lineId: string; index?: number } | null {
+    const over = event.over;
+
+    if (!over) return null;
+
+    const overId = String(over.id);
+
+    if (overId.startsWith(LINE_PREFIX)) {
+      return { lineId: overId.slice(LINE_PREFIX.length) };
+    }
+
+    const location = locateItem(song, overId);
+
+    if (!location) return null;
+
+    const pointer = pointerPosition(event);
+    const rect = over.rect;
+    const after = pointer ? pointer.x > rect.left + rect.width / 2 : false;
+
+    return {
+      lineId: location.line.id,
+      index: pointer ? location.itemIndex + (after ? 1 : 0) : getPointerInsertionIndex(event, location.itemIndex),
+    };
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const dragData = event.active.data.current;
+    setActiveDrag(null);
+
+    if (!dragData) return;
+
+    if (dragData.kind === "palette") {
+      const symbol = String(dragData.symbol ?? "");
+      const target = resolveTarget(event);
+
+      if (symbol && target) {
+        addChord(symbol, target.lineId, target.index);
+      }
+
+      return;
+    }
+
+    const activeItemId = String(event.active.id);
+
+    if (!event.over) {
+      removeChord(activeItemId);
+      return;
+    }
+
+    const target = resolveTarget(event);
+
+    if (!target) return;
+
+    const targetLine = song.lines.find((line) => line.id === target.lineId);
+    const toIndex = target.index ?? targetLine?.items.length ?? 0;
+
+    onChange((current) => moveItem(current, activeItemId, target.lineId, toIndex));
+  }
+
+  function selectItem(itemId: string) {
+    setSelectedItemId((current) => (current === itemId ? null : itemId));
+  }
+
+  const inheritedLabel = (lineIndex: number): string | null => {
+    const kind = sections[lineIndex].kind;
+    return kind === "" ? null : SECTION_LABELS[kind].replace("…", "");
+  };
+
+  return (
+    <section className="workspace workspace--song" aria-labelledby="song-mode-title">
+      <div className="workspace__intro">
+        <p className="eyebrow">和弦編排・第一步</p>
+        <h2 id="song-mode-title">建立和弦編排</h2>
+      </div>
+
+      <ProgressionPresets hasItems={total > 0} onApply={onApplyProgression} />
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionByPointer}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveDrag(null)}
+      >
+        <div className="song-arranger">
+          <section className="song-arranger__section song-palette" aria-labelledby="song-palette-title">
+            <div className="song-arranger__heading">
+              <div>
+                <p className="eyebrow">本曲和弦</p>
+                <h3 id="song-palette-title">先設好這首歌會用到的和弦</h3>
+              </div>
+              <span>含 C/G 這類分數和弦；設好後點一下或拖曳就能用，不用每次重選</span>
+            </div>
+
+            <div className="song-palette__list">
+              {(song.palette ?? []).length === 0 && <span className="song-palette__empty">還沒設定，從下面挑和弦加入。</span>}
+
+              {(song.palette ?? []).map((symbol) => (
+                <div className="song-palette__chip" key={symbol}>
+                  <PaletteChord symbol={symbol} scope="song" onAdd={(value) => addChord(value)} />
+                  <button
+                    type="button"
+                    className="song-palette__remove"
+                    aria-label={`從本曲和弦移除 ${symbol}`}
+                    onClick={() => onChange((current) => removePaletteChord(current, symbol))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="song-palette__builder">
+              <label>
+                <span>根音</span>
+                <select value={builderRoot} onChange={(event) => setBuilderRoot(event.target.value)}>
+                  {ROOT_KEY_OPTIONS.map((option) => (
+                    <option key={option.pitchClass} value={option.common}>
+                      {formatNoteLabel(option.common)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>類型</span>
+                <select value={builderType} onChange={(event) => setBuilderType(event.target.value)}>
+                  {CHORD_TYPE_OPTIONS.map((option) => (
+                    <option key={option.suffix || "major"} value={option.suffix}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>低音</span>
+                <select value={builderBass} onChange={(event) => setBuilderBass(event.target.value)}>
+                  <option value="">原位</option>
+                  {ROOT_KEY_OPTIONS.filter((option) => option.common !== builderRoot).map((option) => (
+                    <option key={option.pitchClass} value={option.common}>
+                      {formatNoteLabel(option.common)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!isValidSymbol(builderSymbol)}
+                onClick={() => onChange((current) => addPaletteChord(current, builderSymbol))}
+              >
+                加入 {builderSymbol}
+              </button>
+
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={total === 0}
+                onClick={() =>
+                  onChange((current) => uniqueSymbols(current).reduce((acc, symbol) => addPaletteChord(acc, symbol), current))
+                }
+              >
+                把編排中已有的和弦都加入
+              </button>
+            </div>
+          </section>
+
+          <section className="song-arranger__section" aria-labelledby="palette-title">
+            <div className="song-arranger__heading">
+              <div>
+                <p className="eyebrow">待選區</p>
+                <h3 id="palette-title">選擇根音</h3>
+              </div>
+
+              <div className="palette-heading-actions">
+                <div className="palette-accidental-control" role="group" aria-label="調整待選區根音">
+                  <button
+                    type="button"
+                    className={paletteAccidentalMode === "flat" ? "is-active" : ""}
+                    onClick={() => setPaletteAccidentalMode("flat")}
+                  >
+                    ♭ 降半音
+                  </button>
+                  <button
+                    type="button"
+                    className={paletteAccidentalMode === "natural" ? "is-active" : ""}
+                    onClick={() => setPaletteAccidentalMode("natural")}
+                  >
+                    ♮ 還原
+                  </button>
+                  <button
+                    type="button"
+                    className={paletteAccidentalMode === "sharp" ? "is-active" : ""}
+                    onClick={() => setPaletteAccidentalMode("sharp")}
+                  >
+                    ♯ 升半音
+                  </button>
+                </div>
+
+                <span>點擊加入（有選取和弦時插在它後面），或拖曳到任一行</span>
+              </div>
+            </div>
+
+            <div className="palette-chord-list">
+              {paletteRootNotes.map((symbol) => (
+                <PaletteChord key={symbol} symbol={symbol} scope="root" onAdd={(value) => addChord(value)} />
+              ))}
+            </div>
+          </section>
+
+          <section className="song-arranger__section" aria-labelledby="arrangement-title">
+            <div className="song-arranger__heading">
+              <div>
+                <p className="eyebrow">和弦編排區</p>
+                <h3 id="arrangement-title">歌曲順序</h3>
+              </div>
+
+              <div className="song-arranger__count">
+                <span>
+                  {song.lines.length} 行・{total} 個和弦
+                </span>
+              </div>
+            </div>
+
+            <div className="song-lines">
+              {song.lines.map((line, lineIndex) => {
+                const isChorus = sections[lineIndex].kind === "chorus";
+                const isActive = (selected?.line.id ?? activeLineId) === line.id;
+
+                return (
+                  <div
+                    key={line.id}
+                    className={`song-line${isChorus ? " is-chorus" : ""}${isActive ? " is-active" : ""}`}
+                    onClick={() => setActiveLineId(line.id)}
+                  >
+                    <LineHeader
+                      line={line}
+                      index={lineIndex}
+                      total={song.lines.length}
+                      inherited={inheritedLabel(lineIndex)}
+                      onChange={onChange}
+                    />
+
+                    <SortableContext items={line.items.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
+                      <LineDropZone lineId={line.id} isActive={isActive}>
+                        {line.items.length > 0 ? (
+                          <div className="arranged-chord-list">
+                            {line.items.map((item) => (
+                              <SortableSongChord
+                                key={item.id}
+                                item={item}
+                                lineId={line.id}
+                                barKind={
+                                  item.barStyle
+                                    ? item.barStyle === "repeatEnd"
+                                      ? "repeat-end"
+                                      : item.barStyle
+                                    : bars.has(item.id)
+                                      ? item.id === lastItemId
+                                        ? "final"
+                                        : "single"
+                                      : null
+                                }
+                                beats={itemBeats(song, item)}
+                                isSelected={selectedItemId === item.id}
+                                onSelect={() => selectItem(item.id)}
+                                onRemove={() => removeChord(item.id)}
+                                onLyric={(lyric) =>
+                                  onChange((current) => setLyric(current, item.id, lyric), `lyric:${item.id}`)
+                                }
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="arrangement-empty">把和弦拖曳到這一行，或點待選區加入</div>
+                        )}
+                      </LineDropZone>
+                    </SortableContext>
+
+                    {selectedItem && selected?.line.id === line.id && (
+                      <>
+          <div className="chord-toolbar chord-toolbar--inline" role="toolbar" aria-label={`第 ${lineIndex + 1} 行選取的和弦操作`}>
+            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, -1))}>
+              ← 前移
+            </button>
+            <button type="button" className="ghost-button" onClick={() => onChange((s) => moveItemBy(s, selectedItem.id, 1))}>
+              後移 →
+            </button>
+            <button type="button" className="ghost-button" onClick={duplicateSelected}>
+              ⧉ 複製和弦
+            </button>
+            <button type="button" className="ghost-button" onClick={splitAfterSelected}>
+              ↵ 從此換行
+            </button>
+            <button
+              type="button"
+              className={`ghost-button${bars.has(selectedItem.id) ? " is-active" : ""}`}
+              aria-pressed={bars.has(selectedItem.id)}
+              title="這個和弦後面的小節線；有設拍號與拍數時會自動畫，按一下可取消"
+              onClick={() => onChange((s) => toggleBar(s, selectedItem.id))}
+            >
+              ｜ 小節線
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              disabled={(song.palette ?? []).includes(selectedItem.symbol)}
+              onClick={() => onChange((s) => addPaletteChord(s, selectedItem.symbol))}
+            >
+              ＋ 加入本曲和弦
+            </button>
+            <button type="button" className="ghost-button" onClick={() => removeChord(selectedItem.id)}>
+              刪除
+            </button>
+          <span className="beat-picker" role="group" aria-label="這個和弦的拍數">
+              <span className="beat-picker__label">拍數</span>
+              <button
+                type="button"
+                className={selectedItem.beats === undefined ? "is-active" : ""}
+                onClick={() => onChange((s) => setBeats(s, selectedItem.id, undefined))}
+                title="使用歌曲的預設拍數"
+              >
+                預設{song.defaultBeats ? `(${song.defaultBeats})` : ""}
+              </button>
+              {BEAT_CHOICES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={selectedItem.beats === value ? "is-active" : ""}
+                  aria-pressed={selectedItem.beats === value}
+                  onClick={() => onChange((s) => setBeats(s, selectedItem.id, value))}
+                >
+                  {value === 0.5 ? "½" : value === 1.5 ? "1½" : value}
+                </button>
+              ))}
+            </span>
+            <span className="beat-picker bar-style-picker" role="group" aria-label="小節線樣式與反覆記號">
+              <span className="beat-picker__label">線型</span>
+              {(
+                [
+                  [undefined, "標準", "一般小節線（依自動／手動設定）"],
+                  ["double", "‖ 雙線", "段落結束的雙小節線"],
+                  ["final", "終止線", "全曲結束的終止線（最後一個和弦預設就是）"],
+                  ["repeatEnd", ":‖ 反覆", "反覆結束記號"],
+                ] as const
+              ).map(([style, label, title]) => (
+                <button
+                  key={label}
+                  type="button"
+                  title={title}
+                  className={selectedItem.barStyle === style ? "is-active" : ""}
+                  aria-pressed={selectedItem.barStyle === style}
+                  onClick={() => onChange((s) => setBarStyle(s, selectedItem.id, style as BarStyle | undefined))}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                title="這個和弦前面畫反覆開始記號"
+                className={selectedItem.repeatStart ? "is-active" : ""}
+                aria-pressed={Boolean(selectedItem.repeatStart)}
+                onClick={() => onChange((s) => setRepeatStart(s, selectedItem.id, !selectedItem.repeatStart))}
+              >
+                ‖: 反覆開始
+              </button>
+              <label className="bar-style-picker__ending">
+                房子
+                <select
+                  value={selectedItem.ending ?? 0}
+                  title="第 1、2 次結尾的括線；從這個和弦開始，到有線型的和弦為止"
+                  onChange={(event) =>
+                    onChange((s) => setEnding(s, selectedItem.id, Number(event.target.value) || undefined))
+                  }
+                >
+                  <option value={0}>無</option>
+                  {Array.from({ length: MAX_ENDING }, (_, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {index + 1}.
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </span>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => document.getElementById("selected-chord-editor-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              按法與類型 ↓
+            </button>
+            <button type="button" className="ghost-button" onClick={() => setSelectedItemId(null)} aria-label="取消選取">
+              ✕
+            </button>
+          </div>
+                      </>
+                    )}
+
+                    {line.items.length > 0 && <MelodyEditor song={song} line={line} onChange={onChange} />}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="song-options song-arranger__options">
+              <button type="button" className="ghost-button" onClick={addNewLine}>
+                ＋ 新增一行
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setShowPaste((open) => !open)}>
+                貼上整首歌詞
+              </button>
+              <span>拖曳調整順序（可拖到其他行）；拖出編排區即可移除。每行代表一句，歌詞打在和弦下方；歌詞按 Enter 換行代表第 2、3 節。</span>
+            </div>
+
+            {notice && (
+              <p className="song-bar__message" role="status">
+                {notice}
+              </p>
+            )}
+          </section>
+        </div>
+
+        <DragOverlay>{activeDrag ? <div className="drag-overlay-chord">{activeDrag.symbol}</div> : null}</DragOverlay>
+      </DndContext>
+
+      {showPaste && (
+        <PasteLyrics song={song} onApply={onChange} onClose={() => setShowPaste(false)} />
+      )}
+
+      {selectedItem && selectedRoot ? (
+        <section className="selected-chord-editor" aria-labelledby="selected-chord-editor-title">
+          <div className="selected-chord-editor__heading">
+            <div className="selected-chord-editor__heading-main">
+              <div>
+                <p className="eyebrow">目前編輯</p>
+                <h3 id="selected-chord-editor-title">{selectedItem.symbol}</h3>
+              </div>
+            </div>
+
+            <button type="button" className="secondary-button" onClick={() => setSelectedItemId(null)}>
+              關閉
+            </button>
+          </div>
+
+          <div className="selected-chord-editor__layout">
+            <div className="selected-chord-editor__main">
+              <ChordCard
+                symbol={selectedItem.symbol}
+                selectedShapeId={selectedItem.shapeId}
+                onShapeChange={(shapeId) => onChange((s) => setShape(s, selectedItem.id, shapeId))}
+              />
+            </div>
+
+            <div className="selected-chord-editor__types">
+              <div className="related-heading">
+                <div>
+                  <p className="eyebrow">12 種和弦類型</p>
+                  <h3>{selectedRoot} 的和弦類型</h3>
+                </div>
+
+                <span>點選後只修改目前選中的和弦</span>
+              </div>
+
+              <div className="bass-picker">
+                <div className="bass-picker__heading">
+                  <strong>低音（分數和弦）</strong>
+                  <small>換成其他低音，例如 C/G、G/B</small>
+                </div>
+
+                <div className="bass-picker__list">
+                  <button
+                    type="button"
+                    className={`ux-key${selectedBassNote ? "" : " is-active"}`}
+                    aria-pressed={!selectedBassNote}
+                    onClick={() => onChange((s) => replaceSymbol(s, selectedItem.id, selectedBaseSymbol))}
+                  >
+                    原位
+                  </button>
+
+                  {ROOT_KEY_OPTIONS.map((option) => {
+                    const isRoot = option.pitchClass === selectedRootPitchClass;
+                    const isActive =
+                      selectedBassNote !== undefined &&
+                      findRootKeyOption(selectedBassNote)?.pitchClass === option.pitchClass;
+
+                    return (
+                      <button
+                        key={option.pitchClass}
+                        type="button"
+                        className={`ux-key${option.sharp !== option.flat ? " is-black" : ""}${isActive ? " is-active" : ""}`}
+                        aria-pressed={isActive}
+                        disabled={isRoot}
+                        title={isRoot ? "與根音相同" : undefined}
+                        onClick={() =>
+                          onChange((s) => replaceSymbol(s, selectedItem.id, `${selectedBaseSymbol}/${option.common}`))
+                        }
+                      >
+                        {formatNoteLabel(option.common)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="chord-type-grid">
+                {CHORD_TYPE_OPTIONS.map((option) => {
+                  const candidateSymbol = `${selectedRoot}${option.suffix}${selectedBassNote ? `/${selectedBassNote}` : ""}`;
+                  const isCurrent = candidateSymbol === selectedItem.symbol;
+
+                  return (
+                    <div className={`chord-type-option${isCurrent ? " is-current" : ""}`} key={option.suffix || "major"}>
+                      <ChordCard
+                        symbol={candidateSymbol}
+                        compact
+                        eyebrow={option.label}
+                        onSelect={(newSymbol) => onChange((s) => replaceSymbol(s, selectedItem.id, newSymbol))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <div className="selected-chord-editor-placeholder">
+          點一下編排區的和弦，就能複製、換行、加小節線、查看按法並改成其他和弦類型。
+        </div>
+      )}
+    </section>
+  );
+}

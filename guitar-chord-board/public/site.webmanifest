@@ -1,0 +1,19 @@
+{
+  "name": "Guitar Chord Board",
+  "short_name": "和弦板",
+  "description": "查詢吉他和弦按法、組成音，並整理歌曲所需和弦。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#8b451f",
+  "theme_color": "#8b451f",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "2048x2048",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
