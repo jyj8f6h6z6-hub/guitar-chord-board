@@ -68,7 +68,7 @@ import type { BarStyle, SectionKind } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import { isValidSymbol } from "../../services/songStorage";
 import { MelodyEditor } from "../song/MelodyEditor";
-import { VerseFill } from "../song/VerseFill";
+import { PasteLyrics } from "../song/PasteLyrics";
 import { ProgressionPresets } from "./ProgressionPresets";
 
 interface SongChordModeProps {
@@ -386,7 +386,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [notice, setNotice] = useState("");
-  const [showVerseFill, setShowVerseFill] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
   const [builderRoot, setBuilderRoot] = useState("C");
   const [builderType, setBuilderType] = useState("");
   const [builderBass, setBuilderBass] = useState("");
@@ -914,8 +914,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
               <button type="button" className="ghost-button" onClick={addNewLine}>
                 ＋ 新增一行
               </button>
-              <button type="button" className="ghost-button" onClick={() => setShowVerseFill((open) => !open)}>
-                貼上其他節歌詞
+              <button type="button" className="ghost-button" onClick={() => setShowPaste((open) => !open)}>
+                貼上整首歌詞
               </button>
               <span>拖曳調整順序（可拖到其他行）；拖出編排區即可移除。每行代表一句，歌詞打在和弦下方；歌詞按 Enter 換行代表第 2、3 節。</span>
             </div>
@@ -931,8 +931,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
         <DragOverlay>{activeDrag ? <div className="drag-overlay-chord">{activeDrag.symbol}</div> : null}</DragOverlay>
       </DndContext>
 
-      {showVerseFill && (
-        <VerseFill song={song} onApply={onChange} onClose={() => setShowVerseFill(false)} />
+      {showPaste && (
+        <PasteLyrics song={song} onApply={onChange} onClose={() => setShowPaste(false)} />
       )}
 
       {selectedItem && selectedRoot ? (

@@ -400,7 +400,7 @@ export function layoutLineMelody(
 
 /* ---------- 歌詞對應 ---------- */
 
-const ATTACH_TO_PREVIOUS = /^[，。、；：！？,.;:!?）)」』”’…～~》〉】]$/;
+const ATTACH_TO_PREVIOUS = /^[，。、；：！？,.;:!?）)」』”’…～~》〉】—─–‥⋯]$/;
 const ATTACH_TO_NEXT = /^[（(「『“‘《〈【]$/;
 
 /** 把一節歌詞切成「一個字一個音」的單位；標點接在前一個字後面，左括號、引號接在後一個字前面。 */

@@ -9,8 +9,8 @@ import {
 import { allItems, countItems, effectiveSections, hasMelody, songMeta } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
-import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
 import type { DiagramMode, DiagramSize } from "../song/LeadSheet";
+import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
