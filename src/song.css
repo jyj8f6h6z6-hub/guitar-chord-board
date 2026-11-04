@@ -1877,3 +1877,168 @@ body.is-performing {
     margin-bottom: 6px;
   }
 }
+
+/* 1.4.0-exp.5：譜架預覽（螢幕上的橫向紙張，左右兩欄） */
+.print-scale-box.is-stand-hidden {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.stand-preview__note {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stand-preview__pages {
+  display: grid;
+  gap: 18px;
+  justify-content: start;
+}
+
+.stand-page {
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #f2f2f2;
+  --text: #111111;
+  --muted: #444444;
+  --line: #bbbbbb;
+  --accent: #111111;
+  --accent-strong: #111111;
+  --bar-color: #111111;
+  --mel-color: #111111;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.stand-page__header {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #111111;
+}
+
+.stand-page__header h1 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+  color: #111111;
+}
+
+.stand-page__header p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.stand-page__cols {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  min-height: 0;
+}
+
+.stand-page__cols::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0.3mm;
+  background: #bbbbbb;
+}
+
+.stand-page__number {
+  position: absolute;
+  right: 6mm;
+  bottom: 3mm;
+  color: #888888;
+  font-size: 0.7rem;
+}
+
+.stand-col {
+  min-width: 0;
+}
+
+.stand-col .lead-sheet {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: #ffffff;
+  --lead-edge: calc(6px + 3.4em + 4px);
+}
+
+.stand-col .lead-sheet > * {
+  zoom: var(--print-scale, 1);
+  margin-bottom: 6px;
+  break-inside: avoid;
+}
+
+.stand-col .lead-line {
+  grid-template-columns: 3.4em 1fr;
+  gap: 4px;
+  padding: 4px 2px;
+  border-left-color: transparent;
+  background: transparent !important;
+}
+
+.stand-col .lead-line.is-chorus {
+  border-left: 4px solid #111111;
+}
+
+.stand-preview[data-print-cols] .stand-col .lead-line__cells {
+  display: grid;
+  grid-template-columns: repeat(var(--print-cols), minmax(max-content, 1fr));
+  align-items: end;
+}
+
+.stand-col .lead-cell__chord,
+.stand-col .lead-cell__lyric,
+.stand-col .lead-cell__volta,
+.stand-col .verse-no,
+.stand-col .mel-col.is-hold .mel-num {
+  color: #111111;
+}
+
+.stand-col .lead-bar,
+.stand-col .lead-cell__chordrow.has-bar {
+  border-right-color: #111111;
+}
+
+.stand-col .lead-legend {
+  border-bottom-color: #111111;
+}
+
+.stand-col .section-badge {
+  background: #ffffff !important;
+  border: 1.5px solid #111111;
+  color: #111111 !important;
+}
+
+.stand-col .section-badge--chorus {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+@media print {
+  .stand-preview {
+    display: none !important;
+  }
+
+  .print-scale-box.is-stand-hidden {
+    position: static !important;
+    left: auto !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}

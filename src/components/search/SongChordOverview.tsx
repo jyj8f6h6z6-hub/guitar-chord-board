@@ -11,6 +11,7 @@ import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import type { DiagramMode, DiagramSize } from "../song/LeadSheet";
 import { DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
+import { StandPreview } from "./StandPreview";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
@@ -71,25 +72,33 @@ function computeFit(box: HTMLElement, paperWidthMm: number, scale: number): numb
   return Math.max(MIN_FIT, Math.min(1, worst));
 }
 
+export interface ColumnPlan {
+  /** 每一欄第一個項目的編號（項目＝上方圖例＋每一行譜） */
+  starts: number[];
+  /** 項目 0 是否為上方圖例 */
+  hasLegend: boolean;
+  items: HTMLElement[];
+}
+
 /**
  * 把每一行譜分配到各欄，讓每一頁左右兩欄的高度盡量相同（最後一頁也是）。
- * 先量每個項目（譜行、圖例）在列印時的高度，用動態規劃找出「最高那一欄最矮」的分法，
- * 再在每欄第一個項目前插入強制換欄。高度估計偏保守（+10%），寧可欄底留白也不溢出。
- * 傳回還原函式。
+ * 先量每個項目（譜行、圖例）在列印時的高度，用動態規劃找出「最高那一欄最矮」的分法。
+ * 高度估計偏保守（+10%），寧可欄底留白也不溢出。
  */
-function balanceColumns(
+function planColumns(
   box: HTMLElement,
   paper: { width: number; height: number },
   scale: number,
   printCols: number,
-): () => void {
+): ColumnPlan | null {
   const sheet = box.querySelector<HTMLElement>(".lead-sheet");
 
   if (!sheet) {
-    return () => undefined;
+    return null;
   }
 
   const items = Array.from(sheet.children) as HTMLElement[];
+  const hasLegend = items[0]?.classList.contains("lead-legend") ?? false;
   const pxPerMm = 96 / 25.4;
   const columnPx = ((paper.width - 2 * PAPER_MARGIN_MM - PAPER_GAP_MM) / 2) * pxPerMm;
   const pageHeight = (paper.height - 2 * PAPER_MARGIN_MM) * pxPerMm;
@@ -160,7 +169,7 @@ function balanceColumns(
   columns = Math.min(columns, items.length);
 
   if (columns < 2 || items.length < 2) {
-    return () => undefined;
+    return { starts: [0], hasLegend, items };
   }
 
   // 動態規劃：把 items 依序切成 columns 段，使最高的一段最矮
@@ -191,7 +200,7 @@ function balanceColumns(
   }
 
   if (!Number.isFinite(best[columns][count])) {
-    return () => undefined;
+    return { starts: [0], hasLegend, items };
   }
 
   const starts: number[] = [];
@@ -202,14 +211,21 @@ function balanceColumns(
     end = start;
   }
 
-  starts.reverse().slice(1).forEach((index) => {
-    items[index].style.breakBefore = "column";
+  return { starts: starts.reverse(), hasLegend, items };
+}
+
+/** 列印用：在每欄第一個項目前插入強制換欄。傳回還原函式。 */
+function applyColumnBreaks(box: HTMLElement, plan: ColumnPlan): () => void {
+  plan.starts.slice(1).forEach((index) => {
+    plan.items[index].style.breakBefore = "column";
   });
 
-  box.style.columnFill = "auto";
+  if (plan.starts.length > 1) {
+    box.style.columnFill = "auto";
+  }
 
   return () => {
-    items.forEach((item) => {
+    plan.items.forEach((item) => {
       item.style.breakBefore = "";
     });
     box.style.columnFill = "";
@@ -247,6 +263,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
   const [printFit, setPrintFit] = usePersistentState<boolean>("guitar-chord-board:print-fit", true);
   const boxRef = useRef<HTMLDivElement>(null);
+  const [standPlan, setStandPlan] = useState<{ scale: number; starts: number[]; hasLegend: boolean } | null>(null);
   const songHasMelody = hasMelody(song);
   const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
   const standMode = paper.value !== "default" && layout === "lead";
@@ -272,7 +289,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
       after();
       const effective = printFit ? printScale * computeFit(box, paper.width, printScale) : printScale;
       box.style.setProperty("--print-scale", String(effective));
-      restore = balanceColumns(box, paper, effective, printCols);
+      const plan = planColumns(box, paper, effective, printCols);
+      restore = plan ? applyColumnBreaks(box, plan) : null;
     };
 
     window.addEventListener("beforeprint", before);
@@ -302,6 +320,36 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   }, [isPreviewing, items, transposedSymbols]);
 
   const displayed = (itemId: string, fallback: string) => symbolById?.[itemId] ?? fallback;
+
+  // 譜架預覽：量好每一行的寬度、決定縮小多少與各欄放哪些行（與列印時同一套算法）。
+  useEffect(() => {
+    const box = boxRef.current;
+
+    if (!standMode || !box) {
+      setStandPlan(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const compute = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const effective = printFit ? printScale * computeFit(box, paper.width, printScale) : printScale;
+      const plan = planColumns(box, paper, effective, printCols);
+      setStandPlan(plan ? { scale: effective, starts: plan.starts, hasLegend: plan.hasLegend } : null);
+    };
+
+    compute();
+    void document.fonts?.ready.then(compute);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [standMode, printFit, printScale, paper, song, layout, printCols, diagramMode, diagramSize, showMelody, symbolById]);
+
 
   const uniqueEntries = useMemo(() => {
     const seen = new Map<string, { symbol: string; shapeId?: string; count: number }>();
@@ -587,7 +635,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
 
       <div
         ref={boxRef}
-        className="print-scale-box"
+        className={`print-scale-box${standMode ? " is-stand-hidden" : ""}`}
         data-paper={standMode ? paper.value : undefined}
         data-print-cols={printCols > 0 ? printCols : undefined}
         style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
@@ -646,6 +694,25 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         </div>
       )}
       </div>
+
+      {standMode && standPlan && (
+        <StandPreview
+          song={song}
+          symbols={symbolById}
+          diagramMode={diagramMode}
+          diagramWidth={DIAGRAM_SIZES[diagramSize].width}
+          showMelody={showMelody}
+          paper={paper}
+          margin={PAPER_MARGIN_MM}
+          gap={PAPER_GAP_MM}
+          scale={standPlan.scale}
+          starts={standPlan.starts}
+          hasLegend={standPlan.hasLegend}
+          printCols={printCols}
+          title={song.title.trim() || "和弦譜"}
+          meta={`${printMeta}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`}
+        />
+      )}
     </section>
   );
 }

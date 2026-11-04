@@ -41,6 +41,8 @@ interface LeadSheetProps {
   showMelody?: boolean;
   markedLineId?: string | null;
   onLineClick?: (lineId: string) => void;
+  /** 只畫其中一部分（譜架預覽用）：第 start～end-1 行，legend 為是否包含上方圖例；其餘照整首歌計算 */
+  part?: { start: number; end: number; legend: boolean };
 }
 
 interface DiagramEntry {
@@ -167,6 +169,7 @@ export function LeadSheet({
   showMelody = true,
   markedLineId = null,
   onLineClick,
+  part,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
@@ -204,7 +207,7 @@ export function LeadSheet({
 
   return (
     <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}`}>
-      {diagramMode === "legend" && legend.length > 0 && (
+      {diagramMode === "legend" && legend.length > 0 && (!part || part.legend) && (
         <div className="lead-legend" aria-label="本曲和弦按法">
           {legend.map((entry) => (
             <figure className="lead-legend__item" key={entry.key}>
@@ -218,6 +221,10 @@ export function LeadSheet({
       )}
 
       {song.lines.map((line, lineIndex) => {
+        if (part && (lineIndex < part.start || lineIndex >= part.end)) {
+          return null;
+        }
+
         const section = sections[lineIndex];
         const isChorus = section.kind === "chorus";
         const isMarked = markedLineId === line.id;

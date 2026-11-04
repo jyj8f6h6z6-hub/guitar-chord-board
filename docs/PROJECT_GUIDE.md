@@ -2184,7 +2184,19 @@ release: add accidental selector v0.6.2
 
 ---
 
-**## 57. 這份文件之後如何維護**
+**## 57. 1.4.0-exp.5：譜架預覽（螢幕上顯示橫向紙張）**
+
+\- 總覽選了 A3／A4 橫式時，畫面改顯示白色橫向紙張的預覽（新增 `src/components/search/StandPreview.tsx`）：一頁一張紙、左右兩欄、第一頁有標題、右下角頁碼；紙張依容器寬度用 `zoom` 縮放。
+\- 預覽與列印共用同一套分欄：`SongChordOverview.tsx` 的 `computeFit()`（整行不換排的縮小係數）與 `planColumns()`（量高度＋動態規劃分欄），列印時再用 `applyColumnBreaks()` 插入強制換欄。預覽用的是同一份 `starts`，所以兩者版面一致。
+\- `LeadSheet` 新增 `part` 屬性（`{ start, end, legend }`）：只畫指定的行，但「首次出現小圖」「上方圖例」「凸排節號」等仍照整首歌計算。
+\- 原本的 `.print-scale-box` 在螢幕上移到畫面外（`.is-stand-hidden`，仍要量高度），列印時恢復顯示；預覽在列印時隱藏。
+\- 預覽用 `.stand-page` 範圍內的 CSS 變數與覆寫，呈現白底黑字，與列印的顏色規則一致。
+\- 回歸測試：列印的 7 行、12 行歌各 72 組結果與 exp.4 相同。
+\- 版號改為 `1.4.0-exp.5`，新增檔案：`StandPreview.tsx`。
+
+---
+
+**## 58. 這份文件之後如何維護**
 
 每次新增大功能後，至少更新以下區域：
 
