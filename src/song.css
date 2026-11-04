@@ -1855,3 +1855,22 @@ body.is-performing {
   color: #e5484d;
   font-weight: 700;
 }
+
+/* 1.4.0-exp.2：譜架模式（A3／A4 橫式，左右兩欄） */
+@media print {
+  .print-scale-box[data-paper] {
+    column-count: 2;
+    column-gap: calc(12mm / var(--print-scale, 1));
+    column-fill: auto;
+    column-rule: 0.3mm solid #bbb;
+  }
+
+  .print-scale-box[data-paper] .lead-sheet {
+    display: block;
+  }
+
+  .print-scale-box[data-paper] .lead-line {
+    break-inside: avoid;
+    margin-bottom: 6px;
+  }
+}

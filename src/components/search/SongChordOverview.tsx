@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   KEY_OPTIONS,
@@ -29,6 +29,48 @@ const PRINT_COLUMNS: readonly { value: number; label: string }[] = [
   { value: 8, label: "8" },
 ];
 
+/** 列印紙張：預設＝瀏覽器的設定；A3／A4 橫式＝左右兩欄（譜架用）。尺寸單位 mm。 */
+type PrintPaper = "default" | "a3" | "a4";
+
+const PRINT_PAPERS: readonly { value: PrintPaper; label: string; name: string; width: number }[] = [
+  { value: "default", label: "預設", name: "", width: 0 },
+  { value: "a3", label: "A3 橫式（譜架）", name: "A3", width: 420 },
+  { value: "a4", label: "A4 橫式", name: "A4", width: 297 },
+];
+
+const PAPER_MARGIN_MM = 12;
+const PAPER_GAP_MM = 12;
+const MIN_FIT = 0.55;
+
+/**
+ * 算出整體要再縮小多少，才能讓每一行和弦都排在同一排、不掉到下一排。
+ * 量的是畫面上每行「不換行」時的自然寬度，與一欄的寬度相比。
+ */
+function computeFit(box: HTMLElement, paperWidthMm: number, scale: number): number {
+  const pxPerMm = 96 / 25.4;
+  const columnPx = ((paperWidthMm - 2 * PAPER_MARGIN_MM - PAPER_GAP_MM) / 2) * pxPerMm - 40;
+  let worst = 1;
+
+  box.querySelectorAll<HTMLElement>(".lead-line").forEach((line) => {
+    const cells = line.querySelector<HTMLElement>(".lead-line__cells");
+
+    if (!cells) {
+      return;
+    }
+
+    const previous = cells.style.cssText;
+    cells.style.cssText = `${previous};flex-wrap:nowrap;width:max-content`;
+    const natural = cells.getBoundingClientRect().width;
+    cells.style.cssText = previous;
+
+    const fontSize = parseFloat(getComputedStyle(line).fontSize) || 16;
+    const total = natural + 3.4 * fontSize + 20;
+    worst = Math.min(worst, (columnPx / (total * scale)) * 0.97);
+  });
+
+  return Math.max(MIN_FIT, Math.min(1, worst));
+}
+
 const LAYOUT_LABELS: Record<OverviewLayout, string> = {
   lead: "簡譜風格",
   cards: "和弦圖卡片",
@@ -57,7 +99,33 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [printScale, setPrintScale] = usePersistentState<number>("guitar-chord-board:print-scale", 1.3);
   const [printCols, setPrintCols] = usePersistentState<number>("guitar-chord-board:print-cols", 0);
   const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
+  const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
+  const [printFit, setPrintFit] = usePersistentState<boolean>("guitar-chord-board:print-fit", true);
+  const boxRef = useRef<HTMLDivElement>(null);
   const songHasMelody = hasMelody(song);
+  const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
+  const standMode = paper.value !== "default" && layout === "lead";
+
+  // 譜架模式：列印前量每一行的寬度，必要時整體縮小，讓每行和弦排在同一排；列印後還原。
+  useEffect(() => {
+    const box = boxRef.current;
+
+    if (!standMode || !printFit || !box) {
+      return undefined;
+    }
+
+    const before = () => box.style.setProperty("--print-scale", String(printScale * computeFit(box, paper.width, printScale)));
+    const after = () => box.style.setProperty("--print-scale", String(printScale));
+
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+      after();
+    };
+  }, [standMode, printFit, printScale, paper.width, song, layout, printCols]);
 
   const items = useMemo(() => allItems(song), [song]);
   const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
@@ -217,6 +285,42 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           </div>
         )}
 
+        {layout === "lead" && (
+          <div className="segmented-control" role="group" aria-label="列印紙張">
+            <span className="segmented-control__label">列印紙張</span>
+            {PRINT_PAPERS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={printPaper === option.value ? "is-active" : ""}
+                aria-pressed={printPaper === option.value}
+                onClick={() => setPrintPaper(option.value)}
+                title={
+                  option.value === "default"
+                    ? "使用瀏覽器列印視窗裡的紙張設定"
+                    : "橫放、左右兩欄，一行不會被切在兩欄之間；列印視窗的「每張工作表頁數」請保持 1"
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {standMode && (
+          <div className="segmented-control" role="group" aria-label="整行不換排">
+            <button
+              type="button"
+              className={printFit ? "is-active" : ""}
+              aria-pressed={printFit}
+              onClick={() => setPrintFit(!printFit)}
+              title="列印時自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
+            >
+              整行不換排（自動縮小）
+            </button>
+          </div>
+        )}
+
         <div className="overview-toolbar__actions">
           <button type="button" className="ghost-button" onClick={onPerform} disabled={total === 0}>
             進入演奏模式
@@ -321,8 +425,12 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         </span>
       </div>
 
+      {standMode && <style>{`@page { size: ${paper.name} landscape; margin: ${PAPER_MARGIN_MM}mm; }`}</style>}
+
       <div
+        ref={boxRef}
         className="print-scale-box"
+        data-paper={standMode ? paper.value : undefined}
         data-print-cols={printCols > 0 ? printCols : undefined}
         style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
       >
