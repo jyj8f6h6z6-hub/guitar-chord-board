@@ -1858,10 +1858,12 @@ body.is-performing {
 
 /* 1.4.0-exp.2：譜架模式（A3／A4 橫式，左右兩欄） */
 @media print {
+  /* zoom 放在每一行而不是兩欄的外框，這樣最後一頁的兩欄才能平均分配 */
   .print-scale-box[data-paper] {
+    zoom: 1;
     column-count: 2;
-    column-gap: calc(12mm / var(--print-scale, 1));
-    column-fill: auto;
+    column-gap: 12mm;
+    column-fill: balance;
     column-rule: 0.3mm solid #bbb;
   }
 
@@ -1870,6 +1872,7 @@ body.is-performing {
   }
 
   .print-scale-box[data-paper] .lead-line {
+    zoom: var(--print-scale, 1);
     break-inside: avoid;
     margin-bottom: 6px;
   }
