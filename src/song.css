@@ -1871,7 +1871,7 @@ body.is-performing {
     display: block;
   }
 
-  .print-scale-box[data-paper] .lead-line {
+  .print-scale-box[data-paper] .lead-sheet > * {
     zoom: var(--print-scale, 1);
     break-inside: avoid;
     margin-bottom: 6px;

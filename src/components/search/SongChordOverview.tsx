@@ -32,10 +32,10 @@ const PRINT_COLUMNS: readonly { value: number; label: string }[] = [
 /** 列印紙張：預設＝瀏覽器的設定；A3／A4 橫式＝左右兩欄（譜架用）。尺寸單位 mm。 */
 type PrintPaper = "default" | "a3" | "a4";
 
-const PRINT_PAPERS: readonly { value: PrintPaper; label: string; name: string; width: number }[] = [
-  { value: "default", label: "預設", name: "", width: 0 },
-  { value: "a3", label: "A3 橫式（譜架）", name: "A3", width: 420 },
-  { value: "a4", label: "A4 橫式", name: "A4", width: 297 },
+const PRINT_PAPERS: readonly { value: PrintPaper; label: string; name: string; width: number; height: number }[] = [
+  { value: "default", label: "預設", name: "", width: 0, height: 0 },
+  { value: "a3", label: "A3 橫式（譜架）", name: "A3", width: 420, height: 297 },
+  { value: "a4", label: "A4 橫式", name: "A4", width: 297, height: 210 },
 ];
 
 const PAPER_MARGIN_MM = 12;
@@ -69,6 +69,151 @@ function computeFit(box: HTMLElement, paperWidthMm: number, scale: number): numb
   });
 
   return Math.max(MIN_FIT, Math.min(1, worst));
+}
+
+/**
+ * 把每一行譜分配到各欄，讓每一頁左右兩欄的高度盡量相同（最後一頁也是）。
+ * 先量每個項目（譜行、圖例）在列印時的高度，用動態規劃找出「最高那一欄最矮」的分法，
+ * 再在每欄第一個項目前插入強制換欄。高度估計偏保守（+10%），寧可欄底留白也不溢出。
+ * 傳回還原函式。
+ */
+function balanceColumns(
+  box: HTMLElement,
+  paper: { width: number; height: number },
+  scale: number,
+  printCols: number,
+): () => void {
+  const sheet = box.querySelector<HTMLElement>(".lead-sheet");
+
+  if (!sheet) {
+    return () => undefined;
+  }
+
+  const items = Array.from(sheet.children) as HTMLElement[];
+  const pxPerMm = 96 / 25.4;
+  const columnPx = ((paper.width - 2 * PAPER_MARGIN_MM - PAPER_GAP_MM) / 2) * pxPerMm;
+  const pageHeight = (paper.height - 2 * PAPER_MARGIN_MM) * pxPerMm;
+
+  // 列印時的版面：標題在第一頁佔掉一塊高度
+  const header = document.querySelector<HTMLElement>(".print-header");
+  let headerHeight = 110;
+
+  if (header) {
+    const previous = header.style.cssText;
+    header.style.cssText = `${previous};display:block`;
+    headerHeight = header.getBoundingClientRect().height + 24;
+    header.style.cssText = previous;
+  }
+
+  // 暫時套上接近列印時的尺寸與版面來量高度
+  const saved = new Map<HTMLElement, string>();
+  const remember = (element: HTMLElement) => {
+    if (!saved.has(element)) {
+      saved.set(element, element.style.cssText);
+    }
+  };
+
+  remember(box);
+  remember(sheet);
+  box.style.width = `${columnPx / scale}px`;
+  sheet.style.cssText += ";padding:0;border:0;display:block";
+
+  const gridStyle =
+    printCols > 0 ? `;display:grid;grid-template-columns:repeat(${printCols},minmax(max-content,1fr));align-items:end` : "";
+
+  items.forEach((item) => {
+    remember(item);
+
+    if (item.classList.contains("lead-line")) {
+      item.style.cssText += ";grid-template-columns:3.4em 1fr;gap:4px;padding:4px 2px";
+      const cells = item.querySelector<HTMLElement>(".lead-line__cells");
+
+      if (cells) {
+        remember(cells);
+        cells.style.cssText += gridStyle;
+      }
+    }
+  });
+
+  const heights = items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.1);
+
+  saved.forEach((css, element) => {
+    element.style.cssText = css;
+  });
+
+  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.97;
+
+  // 先用「依序塞滿」算出需要幾欄，湊成偶數（左右各一欄＝一頁）
+  let used = 0;
+  let columns = 1;
+
+  heights.forEach((height) => {
+    if (used > 0 && used + height > capacity(columns - 1)) {
+      columns += 1;
+      used = 0;
+    }
+
+    used += height;
+  });
+
+  columns += columns % 2;
+  columns = Math.min(columns, items.length);
+
+  if (columns < 2 || items.length < 2) {
+    return () => undefined;
+  }
+
+  // 動態規劃：把 items 依序切成 columns 段，使最高的一段最矮
+  const prefix = [0];
+  heights.forEach((height) => prefix.push(prefix[prefix.length - 1] + height));
+  const count = items.length;
+  const best: number[][] = Array.from({ length: columns + 1 }, () => new Array(count + 1).fill(Infinity));
+  const cut: number[][] = Array.from({ length: columns + 1 }, () => new Array(count + 1).fill(0));
+  best[0][0] = 0;
+
+  for (let column = 1; column <= columns; column += 1) {
+    for (let end = column; end <= count; end += 1) {
+      for (let start = column - 1; start < end; start += 1) {
+        const sum = prefix[end] - prefix[start];
+
+        if (sum > capacity(column - 1) && end - start > 1) {
+          continue;
+        }
+
+        const value = Math.max(best[column - 1][start], sum);
+
+        if (value < best[column][end]) {
+          best[column][end] = value;
+          cut[column][end] = start;
+        }
+      }
+    }
+  }
+
+  if (!Number.isFinite(best[columns][count])) {
+    return () => undefined;
+  }
+
+  const starts: number[] = [];
+
+  for (let column = columns, end = count; column >= 1; column -= 1) {
+    const start = cut[column][end];
+    starts.push(start);
+    end = start;
+  }
+
+  starts.reverse().slice(1).forEach((index) => {
+    items[index].style.breakBefore = "column";
+  });
+
+  box.style.columnFill = "auto";
+
+  return () => {
+    items.forEach((item) => {
+      item.style.breakBefore = "";
+    });
+    box.style.columnFill = "";
+  };
 }
 
 const LAYOUT_LABELS: Record<OverviewLayout, string> = {
@@ -106,16 +251,29 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
   const standMode = paper.value !== "default" && layout === "lead";
 
-  // 譜架模式：列印前量每一行的寬度，必要時整體縮小，讓每行和弦排在同一排；列印後還原。
+  // 譜架模式：列印前量每一行的寬度，必要時整體縮小（讓每行和弦排在同一排），
+  // 再把各行分配到左右兩欄、每頁平均；列印後還原。
   useEffect(() => {
     const box = boxRef.current;
 
-    if (!standMode || !printFit || !box) {
+    if (!standMode || !box) {
       return undefined;
     }
 
-    const before = () => box.style.setProperty("--print-scale", String(printScale * computeFit(box, paper.width, printScale)));
-    const after = () => box.style.setProperty("--print-scale", String(printScale));
+    let restore: (() => void) | null = null;
+
+    const after = () => {
+      restore?.();
+      restore = null;
+      box.style.setProperty("--print-scale", String(printScale));
+    };
+
+    const before = () => {
+      after();
+      const effective = printFit ? printScale * computeFit(box, paper.width, printScale) : printScale;
+      box.style.setProperty("--print-scale", String(effective));
+      restore = balanceColumns(box, paper, effective, printCols);
+    };
 
     window.addEventListener("beforeprint", before);
     window.addEventListener("afterprint", after);
@@ -125,7 +283,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
       window.removeEventListener("afterprint", after);
       after();
     };
-  }, [standMode, printFit, printScale, paper.width, song, layout, printCols]);
+  }, [standMode, printFit, printScale, paper, song, layout, printCols]);
 
   const items = useMemo(() => allItems(song), [song]);
   const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
