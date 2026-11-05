@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   CHORD_TYPE_OPTIONS,
   ROOT_KEY_OPTIONS,
@@ -387,6 +388,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [notice, setNotice] = useState("");
   const [showPaste, setShowPaste] = useState(false);
+  const [pinned, setPinned] = usePersistentState<boolean>("guitar-chord-board:song-pin", false);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const [builderRoot, setBuilderRoot] = useState("C");
   const [builderType, setBuilderType] = useState("");
   const [builderBass, setBuilderBass] = useState("");
@@ -589,6 +592,18 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
         onDragCancel={() => setActiveDrag(null)}
       >
         <div className="song-arranger">
+          <div className={`song-pinbar${pinned ? " is-pinned" : ""}`}>
+          <div className="song-pinbar__toggle">
+            <button
+              type="button"
+              className={`ghost-button${pinned ? " is-active" : ""}`}
+              aria-pressed={pinned}
+              onClick={() => setPinned(!pinned)}
+              title="固定在畫面最上方，編輯很多行時不用上下來回捲"
+            >
+              📌 {pinned ? "已釘選（精簡版）" : "釘選本曲和弦與待選區"}
+            </button>
+          </div>
           <section className="song-arranger__section song-palette" aria-labelledby="song-palette-title">
             <div className="song-arranger__heading">
               <div>
@@ -616,6 +631,13 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
               ))}
             </div>
 
+            {pinned && (
+              <button type="button" className="ghost-button song-palette__builder-toggle" aria-expanded={builderOpen} onClick={() => setBuilderOpen(!builderOpen)}>
+                {builderOpen ? "收起新增和弦" : "＋ 新增和弦"}
+              </button>
+            )}
+
+            {(!pinned || builderOpen) && (
             <div className="song-palette__builder">
               <label>
                 <span>根音</span>
@@ -671,6 +693,7 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
                 把編排中已有的和弦都加入
               </button>
             </div>
+            )}
           </section>
 
           <section className="song-arranger__section" aria-labelledby="palette-title">
@@ -715,6 +738,8 @@ export function SongChordMode({ song, onChange, onApplyProgression }: SongChordM
               ))}
             </div>
           </section>
+
+          </div>
 
           <section className="song-arranger__section" aria-labelledby="arrangement-title">
             <div className="song-arranger__heading">

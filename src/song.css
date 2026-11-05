@@ -2728,3 +2728,106 @@ body.is-performing {
     width: 100%;
   }
 }
+
+/* 1.4.0-exp.18：本曲和弦與待選區可釘選在最上方（精簡版） */
+.song-pinbar {
+  display: contents;
+}
+
+.song-pinbar__toggle {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.song-pinbar.is-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  max-height: 46vh;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg, #10121a);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.song-pinbar.is-pinned .song-pinbar__toggle {
+  grid-row: 1;
+}
+
+.song-pinbar.is-pinned .song-arranger__section {
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.song-pinbar.is-pinned .song-arranger__heading {
+  margin-bottom: 6px;
+}
+
+/* 精簡：標題與說明文字不顯示，只留操作 */
+.song-pinbar.is-pinned .song-arranger__heading > div:first-child,
+.song-pinbar.is-pinned .song-arranger__heading > span,
+.song-pinbar.is-pinned .palette-heading-actions > span {
+  display: none;
+}
+
+.song-pinbar.is-pinned .song-palette__list {
+  margin: 0;
+  gap: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord-list {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.song-pinbar.is-pinned .song-palette__builder {
+  margin-top: 8px;
+}
+
+.song-palette__builder-toggle {
+  margin-top: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(44px, 1fr));
+  gap: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord {
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+}
+
+.song-pinbar.is-pinned .song-palette__chip .palette-chord {
+  min-width: 56px;
+}
+
+.song-pinbar.is-pinned .palette-heading-actions {
+  width: 100%;
+}
+
+.song-pinbar.is-pinned .palette-accidental-control button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+@media (min-width: 1000px) {
+  .song-pinbar.is-pinned {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .song-pinbar.is-pinned .song-pinbar__toggle {
+    grid-column: 1 / -1;
+  }
+}
+
+.song-pinbar.is-pinned .song-palette__chip .palette-chord {
+  min-height: 38px;
+  padding: 0 10px;
+}
