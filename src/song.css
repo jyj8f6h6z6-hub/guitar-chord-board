@@ -2042,3 +2042,15 @@ body.is-performing {
     pointer-events: auto !important;
   }
 }
+
+/* 1.4.0-exp.6：譜架模式的分散對齊（每一行和弦拉滿欄寬） */
+.lead-sheet--stretch .lead-cell__top,
+.lead-sheet--stretch .lead-cell__lyrics,
+.lead-sheet--stretch .lead-cell__lyric.is-aligned {
+  align-self: stretch;
+}
+
+.lead-sheet--stretch .lead-cell__lyrics {
+  align-items: stretch;
+  padding-right: 0.5em;
+}

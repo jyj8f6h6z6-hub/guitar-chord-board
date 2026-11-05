@@ -43,6 +43,10 @@ interface LeadSheetProps {
   onLineClick?: (lineId: string) => void;
   /** 只畫其中一部分（譜架預覽用）：第 start～end-1 行，legend 為是否包含上方圖例；其餘照整首歌計算 */
   part?: { start: number; end: number; legend: boolean };
+  /** 譜架模式：每一行的和弦依拍數拉開，填滿整欄寬 */
+  stretch?: boolean;
+  /** 譜架模式：行與行之間額外的間距（px），鍵為行的 id；「legend」是上方圖例 */
+  itemMargins?: Readonly<Record<string, number>>;
 }
 
 interface DiagramEntry {
@@ -77,7 +81,7 @@ function dots(count: number): string {
 }
 
 /** 簡譜的一個音符欄：連音線、高八度點、數字（升降、附點）、底線、低八度點。 */
-function MelodyColumnView({ column, flags }: { column: MelodyColumn; flags: LineMelodyLayout }) {
+function MelodyColumnView({ column, flags, stretch }: { column: MelodyColumn; flags: LineMelodyLayout; stretch: boolean }) {
   const classes = [
     "mel-col",
     column.beatStart ? "is-beat-start" : "",
@@ -89,7 +93,14 @@ function MelodyColumnView({ column, flags }: { column: MelodyColumn; flags: Line
     .join(" ");
 
   return (
-    <span className={classes} style={{ width: `${column.widthEm}em` }}>
+    <span
+      className={classes}
+      style={
+        stretch
+          ? { flexGrow: Math.max(column.beats, 0.25), flexShrink: 0, flexBasis: `${column.widthEm}em`, minWidth: `${column.widthEm}em` }
+          : { width: `${column.widthEm}em` }
+      }
+    >
       {flags.needSlur && <span className="mel-slur" aria-hidden="true" />}
       {flags.needHigh && (
         <span className="mel-dots" aria-hidden="true">
@@ -170,6 +181,8 @@ export function LeadSheet({
   markedLineId = null,
   onLineClick,
   part,
+  stretch = false,
+  itemMargins,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
@@ -206,9 +219,13 @@ export function LeadSheet({
   );
 
   return (
-    <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}`}>
+    <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}${stretch ? " lead-sheet--stretch" : ""}`}>
       {diagramMode === "legend" && legend.length > 0 && (!part || part.legend) && (
-        <div className="lead-legend" aria-label="本曲和弦按法">
+        <div
+          className="lead-legend"
+          aria-label="本曲和弦按法"
+          style={itemMargins?.legend !== undefined ? { marginBottom: `${6 + itemMargins.legend}px` } : undefined}
+        >
           {legend.map((entry) => (
             <figure className="lead-legend__item" key={entry.key}>
               <DiagramFigure entry={entry} width={diagramWidth} />
@@ -249,6 +266,7 @@ export function LeadSheet({
             key={line.id}
             className={classes}
             data-line-id={line.id}
+            style={itemMargins?.[line.id] !== undefined ? { marginBottom: `${6 + itemMargins[line.id]}px` } : undefined}
             onClick={onLineClick ? () => onLineClick(line.id) : undefined}
           >
             <div className="lead-line__label">
@@ -297,7 +315,13 @@ export function LeadSheet({
                   <Fragment key={item.id}>
                     <div
                       className={`lead-cell${item.repeatStart ? " is-repeat-start" : ""}`}
-                      style={minWidth ? { minWidth } : undefined}
+                      style={
+                        stretch
+                          ? { minWidth, flexGrow: Math.max(itemCapacity(song, item) || beats || 1, 0.5), flexShrink: 0 }
+                          : minWidth
+                            ? { minWidth }
+                            : undefined
+                      }
                     >
                       {volta && (
                         <div className={`lead-cell__volta${volta.first ? " is-first" : ""}`}>
@@ -317,7 +341,7 @@ export function LeadSheet({
                         {columns && melody && (
                           <div className="mel-row">
                             {columns.map((column) => (
-                              <MelodyColumnView key={column.key} column={column} flags={melody} />
+                              <MelodyColumnView key={column.key} column={column} flags={melody} stretch={stretch} />
                             ))}
                           </div>
                         )}
@@ -337,7 +361,11 @@ export function LeadSheet({
                                   <span
                                     className="syl"
                                     key={column.key}
-                                    style={{ minWidth: `${column.widthEm}em` }}
+                                    style={
+                                      stretch
+                                        ? { minWidth: `${column.widthEm}em`, flexGrow: Math.max(column.beats, 0.25), flexBasis: `${column.widthEm}em` }
+                                        : { minWidth: `${column.widthEm}em` }
+                                    }
                                   >
                                     {assigned[rowIndex][columnIndex] || " "}
                                   </span>

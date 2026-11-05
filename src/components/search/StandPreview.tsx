@@ -19,6 +19,8 @@ interface StandPreviewProps {
   /** 每一欄第一個項目的編號（項目＝上方圖例＋每一行譜） */
   starts: readonly number[];
   hasLegend: boolean;
+  /** 每個項目下方額外的間距（px），順序同 starts 的項目編號 */
+  margins: readonly number[];
   printCols: number;
   title: string;
   meta: string;
@@ -43,6 +45,7 @@ export function StandPreview({
   scale,
   starts,
   hasLegend,
+  margins,
   printCols,
   title,
   meta,
@@ -81,6 +84,24 @@ export function StandPreview({
       end: Math.max(0, end - offset),
       legend: hasLegend && start === 0,
     };
+  });
+
+  const itemMargins: Record<string, number> = {};
+
+  margins.forEach((margin, index) => {
+    if (margin <= 0) {
+      return;
+    }
+
+    if (hasLegend && index === 0) {
+      itemMargins.legend = margin;
+    } else {
+      const line = song.lines[index - offset];
+
+      if (line) {
+        itemMargins[line.id] = margin;
+      }
+    }
   });
 
   const pages: ColumnPart[][] = [];
@@ -125,6 +146,8 @@ export function StandPreview({
                     diagramWidth={diagramWidth}
                     showMelody={showMelody}
                     part={part}
+                    stretch
+                    itemMargins={itemMargins}
                   />
                 </div>
               ))}
