@@ -16,20 +16,59 @@ import { StandPreview } from "./StandPreview";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
-/** 列印字級（倍率）；用 CSS zoom 整體放大，圖、字、線條一起變大。 */
-const PRINT_SCALES: readonly { value: number; label: string }[] = [
-  { value: 1, label: "標準" },
-  { value: 1.3, label: "大" },
-  { value: 1.6, label: "特大" },
-];
+/** 歌詞字級（pt）：旋律、和弦名稱依比例跟著變；和弦圖另外用滑桿調整。 */
+const PT_MIN = 14;
+const PT_MAX = 36;
+const PT_PRESETS = [14, 15, 16, 18, 20, 22, 24, 28, 32, 36];
+const DIAGRAM_MIN = 60;
+const DIAGRAM_MAX = 400;
+const COLS_MAX = 12;
 
-/** 列印時每一行最多排幾個和弦（0 = 自動換行）；固定時每欄等寬，小節線上下對齊。 */
-const PRINT_COLUMNS: readonly { value: number; label: string }[] = [
-  { value: 0, label: "自動" },
-  { value: 4, label: "4" },
-  { value: 6, label: "6" },
-  { value: 8, label: "8" },
-];
+/** 舊版存的「和弦圖大小」（標準／大／特大）換算成像素，當作滑桿的初始值。 */
+function legacyDiagramPx(): number {
+  try {
+    const raw = window.localStorage.getItem("guitar-chord-board:diagram-size");
+    const key = raw ? (JSON.parse(raw) as DiagramSize) : null;
+    return key && DIAGRAM_SIZES[key] ? DIAGRAM_SIZES[key].width : 72;
+  } catch {
+    return 72;
+  }
+}
+
+function PtInput({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Math.round(Number(text));
+    const next = Number.isFinite(parsed) && text.trim() !== "" ? Math.min(PT_MAX, Math.max(PT_MIN, parsed)) : value;
+    setText(String(next));
+    onChange(next);
+  };
+
+  return (
+    <input
+      type="number"
+      className="pt-input"
+      list="lyric-pt-presets"
+      min={PT_MIN}
+      max={PT_MAX}
+      step={1}
+      value={text}
+      aria-label="歌詞字級（pt）"
+      onChange={(event) => setText(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          commit();
+        }
+      }}
+    />
+  );
+}
 
 /** 列印紙張：預設＝瀏覽器的設定；A3／A4 橫式＝左右兩欄（譜架用）。尺寸單位 mm。 */
 type PrintPaper = "default" | "a3" | "a4";
@@ -42,7 +81,7 @@ const PRINT_PAPERS: readonly { value: PrintPaper; label: string; name: string; w
 
 const PAPER_MARGIN_MM = 12;
 const PAPER_GAP_MM = 12;
-const MIN_FIT = 0.55;
+const MIN_FIT = 0.25;
 
 const PX_PER_MM = 96 / 25.4;
 
@@ -120,7 +159,8 @@ function planFlowRows(
 ): StandRows | null {
   const columnPx = columnWidthPx(paper);
 
-  const measured = withPrintStyles(box, columnPx, printScale, printCols, (sheet) => {
+  // 量欄寬時不套固定欄數的格線（格線會被內容撐寬，量不準）
+  const measured = withPrintStyles(box, columnPx, printScale, 0, (sheet) => {
     const cells = sheet.querySelector<HTMLElement>(".lead-line:not(.lead-flow-probe) .lead-line__cells");
 
     if (!cells) {
@@ -198,7 +238,7 @@ function planColumns(
   const measured = withPrintStyles(box, columnPx, scale, printCols, (sheet) => {
     const items = Array.from(sheet.children).filter((element) => !element.classList.contains("lead-flow-measure") && !element.classList.contains("lead-flow-probe")) as HTMLElement[];
     return {
-      heights: items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.0),
+      heights: items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.004),
     };
   });
 
@@ -206,7 +246,7 @@ function planColumns(
     return null;
   }
 
-  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.998;
+  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.997;
 
   // 依序塞滿：從左欄開始一列一列排，放不下才換下一欄（右欄、下一頁的左欄…）
   const starts = [0];
@@ -273,9 +313,9 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [targetKey, setTargetKey] = useState("D");
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
-  const [diagramSize, setDiagramSize] = usePersistentState<DiagramSize>("guitar-chord-board:diagram-size", "medium");
+  const [diagramPx, setDiagramPx] = usePersistentState<number>("guitar-chord-board:diagram-px", legacyDiagramPx());
+  const [lyricPt, setLyricPt] = usePersistentState<number>("guitar-chord-board:lyric-pt", PT_MIN);
   const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
-  const [printScale, setPrintScale] = usePersistentState<number>("guitar-chord-board:print-scale", 1.3);
   const [printCols, setPrintCols] = usePersistentState<number>("guitar-chord-board:print-cols", 0);
   const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
   const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
@@ -303,6 +343,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const songHasMelody = hasMelody(song);
   const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
   const standMode = paper.value !== "default" && layout === "lead";
+  // 簡譜風格的字級用歌詞 pt 直接設定；其他排版（卡片、不重複和弦）沿用整體縮放，14pt ＝ 原大小
+  const printScale = layout === "lead" ? 1 : lyricPt / PT_MIN;
 
   // 譜架模式：列印前量每一行的寬度，必要時整體縮小（讓每行和弦排在同一排），
   // 再把各行分配到左右兩欄、每頁平均；列印後還原。
@@ -475,19 +517,18 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         )}
 
         {layout === "lead" && diagramMode !== "off" && (
-          <div className="segmented-control" role="group" aria-label="和弦圖大小">
-            {(Object.keys(DIAGRAM_SIZES) as DiagramSize[]).map((size) => (
-              <button
-                key={size}
-                type="button"
-                className={diagramSize === size ? "is-active" : ""}
-                aria-pressed={diagramSize === size}
-                onClick={() => setDiagramSize(size)}
-              >
-                圖{DIAGRAM_SIZES[size].label}
-              </button>
-            ))}
-          </div>
+          <label className="slider-control">
+            <span>和弦圖大小：{diagramPx}px</span>
+            <input
+              type="range"
+              min={DIAGRAM_MIN}
+              max={DIAGRAM_MAX}
+              step={2}
+              value={diagramPx}
+              onChange={(event) => setDiagramPx(Number(event.target.value))}
+              aria-label="和弦圖大小"
+            />
+          </label>
         )}
 
         {layout === "lead" && songHasMelody && (
@@ -501,38 +542,30 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           </div>
         )}
 
-        <div className="segmented-control" role="group" aria-label="列印字級">
-          <span className="segmented-control__label">列印字級</span>
-          {PRINT_SCALES.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={printScale === option.value ? "is-active" : ""}
-              aria-pressed={printScale === option.value}
-              onClick={() => setPrintScale(option.value)}
-              title="只影響列印／存成 PDF，不改變畫面"
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="slider-control pt-control">
+          <span>歌詞字級（pt）</span>
+          <PtInput value={lyricPt} onChange={setLyricPt} />
+          <datalist id="lyric-pt-presets">
+            {PT_PRESETS.map((pt) => (
+              <option key={pt} value={pt} />
+            ))}
+          </datalist>
         </div>
 
         {layout === "lead" && (
-          <div className="segmented-control" role="group" aria-label="列印每行和弦數">
-            <span className="segmented-control__label">列印每行</span>
-            {PRINT_COLUMNS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={printCols === option.value ? "is-active" : ""}
-                aria-pressed={printCols === option.value}
-                onClick={() => setPrintCols(option.value)}
-                title="列印時每一行最多排幾個和弦；固定後每欄等寬、小節線對齊（只影響列印）"
-              >
-                {option.value === 0 ? "自動" : `${option.label} 個`}
-              </button>
-            ))}
-          </div>
+          <label className="slider-control">
+            <span>列印每行：{printCols === 0 ? "自動" : `${printCols} 個和弦`}</span>
+            <input
+              type="range"
+              min={1}
+              max={COLS_MAX}
+              step={1}
+              value={printCols === 0 ? 1 : printCols}
+              onChange={(event) => setPrintCols(Number(event.target.value) <= 1 ? 0 : Number(event.target.value))}
+              aria-label="列印每行和弦數"
+              title="最左邊＝自動。固定後每欄等寬、小節線上下對齊（只影響列印）"
+            />
+          </label>
         )}
 
         {layout === "lead" && (
@@ -557,7 +590,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           </div>
         )}
 
-        {standMode && (
+        {standMode && printCols > 0 && (
           <div className="segmented-control" role="group" aria-label="整行不換排">
             <button
               type="button"
@@ -724,11 +757,12 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           song={song}
           symbols={symbolById}
           diagramMode={diagramMode}
-          diagramWidth={DIAGRAM_SIZES[diagramSize].width}
+          diagramWidth={diagramPx}
           showMelody={showMelody}
           stretch
           flow
           spacing={spacing}
+          lyricPt={lyricPt}
           rows={standMode ? standRows?.rows : undefined}
           legendRows={standMode ? standRows?.legendRows : undefined}
           measureWidths={standMode}
@@ -784,7 +818,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           song={song}
           symbols={symbolById}
           diagramMode={diagramMode}
-          diagramWidth={DIAGRAM_SIZES[diagramSize].width}
+          diagramWidth={diagramPx}
           showMelody={showMelody}
           paper={paper}
           margin={PAPER_MARGIN_MM}
@@ -793,6 +827,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           starts={standPlan.starts}
           rows={standPlan.rows}
           spacing={spacing}
+          lyricPt={lyricPt}
           legendRows={standPlan.legendRows}
           printCols={printCols}
           title={song.title.trim() || "和弦譜"}

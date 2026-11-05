@@ -23,6 +23,7 @@ interface StandPreviewProps {
   /** 圖例分成幾塊（每塊幾張圖） */
   legendRows: readonly number[];
   spacing: Spacing;
+  lyricPt: number;
   printCols: number;
   title: string;
   meta: string;
@@ -48,6 +49,7 @@ export function StandPreview({
   rows,
   legendRows,
   spacing,
+  lyricPt,
   printCols,
   title,
   meta,
@@ -127,6 +129,7 @@ export function StandPreview({
                     legendRows={legendRows}
                     flow
                     spacing={spacing}
+                    lyricPt={lyricPt}
                     rows={rows}
                     stretch
                   />

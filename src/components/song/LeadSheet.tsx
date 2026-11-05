@@ -60,6 +60,8 @@ interface LeadSheetProps {
   spacing?: Spacing;
   /** 連續接排時，上方圖例每一塊放幾張圖（一塊一列，才能分到不同欄）；沒給就是一整塊 */
   legendRows?: readonly number[];
+  /** 歌詞字級（pt）；旋律、和弦名稱依比例跟著變，和弦圖另外用 diagramWidth */
+  lyricPt?: number;
 }
 
 /** 上下間距微調（像素，可為負）：和弦名稱、旋律、歌詞（各節之間）、列與列之間 */
@@ -243,6 +245,7 @@ export function LeadSheet({
   measureWidths = false,
   spacing,
   legendRows,
+  lyricPt,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
@@ -304,7 +307,7 @@ export function LeadSheet({
 
   // ---- 連續接排：量每個和弦的自然寬度，再依欄寬排成列 ----
   const flowCells = useMemo(() => (flow ? buildFlowCells(song, bars) : []), [flow, song, bars]);
-  const measureKey = useMemo(() => ({}), [song, symbols, diagramMode, diagramWidth, showMelody, large, stretch, flow]);
+  const measureKey = useMemo(() => ({}), [song, symbols, diagramMode, diagramWidth, showMelody, large, stretch, flow, lyricPt]);
   const [measured, setMeasured] = useState<{ key: object; widths: number[]; avail: number } | null>(null);
   const [liveAvail, setLiveAvail] = useState<number | null>(null);
   const widths = measured && measured.key === measureKey ? measured.widths : null;
@@ -507,14 +510,20 @@ export function LeadSheet({
     }
   }
 
-  const rootStyle = spacing
-    ? ({
-        "--sp-chord": `${spacing.chord}px`,
-        "--sp-melody": `${spacing.melody}px`,
-        "--sp-lyric": `${spacing.lyric}px`,
-        "--sp-row": `${spacing.row}px`,
-      } as CSSProperties)
-    : undefined;
+  const rootStyle: CSSProperties | undefined =
+    spacing || lyricPt
+      ? ({
+          ...(lyricPt ? { fontSize: `${(lyricPt * 96) / 72}px` } : {}),
+          ...(spacing
+            ? {
+                "--sp-chord": `${spacing.chord}px`,
+                "--sp-melody": `${spacing.melody}px`,
+                "--sp-lyric": `${spacing.lyric}px`,
+                "--sp-row": `${spacing.row}px`,
+              }
+            : {}),
+        } as CSSProperties)
+      : undefined;
   const rootClass = `lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}${stretch ? " lead-sheet--stretch" : ""}${flow ? " lead-sheet--flow" : ""}`;
 
   if (flow) {
