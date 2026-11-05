@@ -45,8 +45,6 @@ interface LeadSheetProps {
   part?: { start: number; end: number; legend: boolean };
   /** 譜架模式：每一行的和弦依拍數拉開，填滿整欄寬 */
   stretch?: boolean;
-  /** 譜架模式：行與行之間額外的間距（px），鍵為行的 id；「legend」是上方圖例 */
-  itemMargins?: Readonly<Record<string, number>>;
 }
 
 interface DiagramEntry {
@@ -182,7 +180,6 @@ export function LeadSheet({
   onLineClick,
   part,
   stretch = false,
-  itemMargins,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
@@ -221,11 +218,7 @@ export function LeadSheet({
   return (
     <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}${stretch ? " lead-sheet--stretch" : ""}`}>
       {diagramMode === "legend" && legend.length > 0 && (!part || part.legend) && (
-        <div
-          className="lead-legend"
-          aria-label="本曲和弦按法"
-          style={itemMargins?.legend !== undefined ? { marginBottom: `${6 + itemMargins.legend}px` } : undefined}
-        >
+        <div className="lead-legend" aria-label="本曲和弦按法">
           {legend.map((entry) => (
             <figure className="lead-legend__item" key={entry.key}>
               <DiagramFigure entry={entry} width={diagramWidth} />
@@ -266,7 +259,6 @@ export function LeadSheet({
             key={line.id}
             className={classes}
             data-line-id={line.id}
-            style={itemMargins?.[line.id] !== undefined ? { marginBottom: `${6 + itemMargins[line.id]}px` } : undefined}
             onClick={onLineClick ? () => onLineClick(line.id) : undefined}
           >
             <div className="lead-line__label">

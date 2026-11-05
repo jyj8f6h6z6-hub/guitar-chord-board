@@ -19,8 +19,6 @@ interface StandPreviewProps {
   /** 每一欄第一個項目的編號（項目＝上方圖例＋每一行譜） */
   starts: readonly number[];
   hasLegend: boolean;
-  /** 每個項目下方額外的間距（px），順序同 starts 的項目編號 */
-  margins: readonly number[];
   printCols: number;
   title: string;
   meta: string;
@@ -45,7 +43,6 @@ export function StandPreview({
   scale,
   starts,
   hasLegend,
-  margins,
   printCols,
   title,
   meta,
@@ -86,24 +83,6 @@ export function StandPreview({
     };
   });
 
-  const itemMargins: Record<string, number> = {};
-
-  margins.forEach((margin, index) => {
-    if (margin <= 0) {
-      return;
-    }
-
-    if (hasLegend && index === 0) {
-      itemMargins.legend = margin;
-    } else {
-      const line = song.lines[index - offset];
-
-      if (line) {
-        itemMargins[line.id] = margin;
-      }
-    }
-  });
-
   const pages: ColumnPart[][] = [];
 
   for (let index = 0; index < columns.length; index += 2) {
@@ -118,7 +97,7 @@ export function StandPreview({
       style={{ "--print-scale": scale, "--print-cols": printCols || 1 } as CSSProperties}
     >
       <p className="stand-preview__note">
-        預覽：{paper.name} 橫式，共 {pages.length} 頁，左右兩欄平均分配。實際列印是白底黑字，版面與這裡相同。
+        預覽：{paper.name} 橫式，共 {pages.length} 頁，依序填滿左欄再右欄。實際列印是白底黑字，版面與這裡相同。
       </p>
 
       <div className="stand-preview__pages" style={{ zoom }}>
@@ -147,7 +126,6 @@ export function StandPreview({
                     showMelody={showMelody}
                     part={part}
                     stretch
-                    itemMargins={itemMargins}
                   />
                 </div>
               ))}

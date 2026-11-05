@@ -78,14 +78,12 @@ export interface ColumnPlan {
   /** 項目 0 是否為上方圖例 */
   hasLegend: boolean;
   items: HTMLElement[];
-  /** 每個項目下方額外的間距（px，未乘列印字級），用來把每一欄的行距拉開、填滿欄高 */
-  margins: number[];
 }
 
 /**
  * 把每一行譜分配到各欄，讓每一頁左右兩欄的高度盡量相同（最後一頁也是）。
  * 先量每個項目（譜行、圖例）在列印時的高度，用動態規劃找出「最高那一欄最矮」的分法。
- * 高度估計偏保守（+10%），寧可欄底留白也不溢出。
+ * 高度估計略偏保守（+3%），寧可欄底多留一點白也不溢出。
  */
 function planColumns(
   box: HTMLElement,
@@ -105,15 +103,30 @@ function planColumns(
   const columnPx = ((paper.width - 2 * PAPER_MARGIN_MM - PAPER_GAP_MM) / 2) * pxPerMm;
   const pageHeight = (paper.height - 2 * PAPER_MARGIN_MM) * pxPerMm;
 
-  // 列印時的版面：標題在第一頁佔掉一塊高度
+  // 列印時的版面：標題在第一頁佔掉一塊高度（暫時套上列印用的字級與間距來量）
   const header = document.querySelector<HTMLElement>(".print-header");
-  let headerHeight = 110;
+  let headerHeight = 90;
 
   if (header) {
-    const previous = header.style.cssText;
-    header.style.cssText = `${previous};display:block`;
-    headerHeight = header.getBoundingClientRect().height + 24;
-    header.style.cssText = previous;
+    const title = header.querySelector<HTMLElement>("h1");
+    const meta = header.querySelector<HTMLElement>("p");
+    const targets: [HTMLElement | null, string][] = [
+      [header, "display:block;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid"],
+      [title, "margin:0 0 6px;font-size:1.7rem"],
+      [meta, "margin:0;font-size:1rem"],
+    ];
+    const previous = targets.map(([element]) => element?.style.cssText ?? "");
+    targets.forEach(([element, css], index) => {
+      if (element) {
+        element.style.cssText = `${previous[index]};${css}`;
+      }
+    });
+    headerHeight = header.getBoundingClientRect().height + 14 + 2;
+    targets.forEach(([element], index) => {
+      if (element) {
+        element.style.cssText = previous[index];
+      }
+    });
   }
 
   // 暫時套上接近列印時的尺寸與版面來量高度
@@ -146,125 +159,34 @@ function planColumns(
     }
   });
 
-  const heights = items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.1);
+  const heights = items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.03);
 
   saved.forEach((css, element) => {
     element.style.cssText = css;
   });
 
-  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.97;
+  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.99;
 
-  // 先用「依序塞滿」算出需要幾欄，湊成偶數（左右各一欄＝一頁）
+  // 依序塞滿：從左欄開始一行一行排，放不下才換下一欄（右欄、下一頁的左欄…）
+  const starts = [0];
   let used = 0;
-  let columns = 1;
 
-  heights.forEach((height) => {
-    if (used > 0 && used + height > capacity(columns - 1)) {
-      columns += 1;
+  heights.forEach((height, index) => {
+    if (used > 0 && used + height > capacity(starts.length - 1)) {
+      starts.push(index);
       used = 0;
     }
 
     used += height;
   });
 
-  columns += columns % 2;
-  columns = Math.min(columns, items.length);
-
-  if (columns < 2 || items.length < 2) {
-    return { starts: [0], hasLegend, items, margins: spreadMargins(heights, [0], capacity, scale) };
-  }
-
-  // 動態規劃：把 items 依序切成 columns 段，使最高的一段最矮
-  const prefix = [0];
-  heights.forEach((height) => prefix.push(prefix[prefix.length - 1] + height));
-  const count = items.length;
-  const best: number[][] = Array.from({ length: columns + 1 }, () => new Array(count + 1).fill(Infinity));
-  const cut: number[][] = Array.from({ length: columns + 1 }, () => new Array(count + 1).fill(0));
-  best[0][0] = 0;
-
-  for (let column = 1; column <= columns; column += 1) {
-    for (let end = column; end <= count; end += 1) {
-      for (let start = column - 1; start < end; start += 1) {
-        const sum = prefix[end] - prefix[start];
-
-        if (sum > capacity(column - 1) && end - start > 1) {
-          continue;
-        }
-
-        const value = Math.max(best[column - 1][start], sum);
-
-        if (value < best[column][end]) {
-          best[column][end] = value;
-          cut[column][end] = start;
-        }
-      }
-    }
-  }
-
-  if (!Number.isFinite(best[columns][count])) {
-    return { starts: [0], hasLegend, items, margins: spreadMargins(heights, [0], capacity, scale) };
-  }
-
-  const starts: number[] = [];
-
-  for (let column = columns, end = count; column >= 1; column -= 1) {
-    const start = cut[column][end];
-    starts.push(start);
-    end = start;
-  }
-
-  starts.reverse();
-  return { starts, hasLegend, items, margins: spreadMargins(heights, starts, capacity, scale) };
-}
-
-/**
- * 每一欄把剩下的高度平均加到行與行之間，讓這一欄的行距拉開、填滿欄高。
- * 每個間距最多拉到該欄項目平均高度的 2.5 倍，避免行數很少時間距大得誇張。
- */
-function spreadMargins(
-  heights: readonly number[],
-  starts: readonly number[],
-  capacity: (column: number) => number,
-  scale: number,
-): number[] {
-  const margins = heights.map(() => 0);
-
-  starts.forEach((start, column) => {
-    const end = column + 1 < starts.length ? starts[column + 1] : heights.length;
-    const count = end - start;
-
-    if (count < 2) {
-      return;
-    }
-
-    const used = heights.slice(start, end).reduce((sum, height) => sum + height, 0);
-    const free = capacity(column) - used;
-
-    if (free <= 0) {
-      return;
-    }
-
-    const average = used / count;
-    const extra = Math.min(free / (count - 1), average * 2.5);
-
-    for (let index = start; index < end - 1; index += 1) {
-      margins[index] = extra / scale;
-    }
-  });
-
-  return margins;
+  return { starts, hasLegend, items };
 }
 
 /** 列印用：在每欄第一個項目前插入強制換欄。傳回還原函式。 */
 function applyColumnBreaks(box: HTMLElement, plan: ColumnPlan): () => void {
   plan.starts.slice(1).forEach((index) => {
     plan.items[index].style.breakBefore = "column";
-  });
-
-  plan.items.forEach((item, index) => {
-    if (plan.margins[index] > 0) {
-      item.style.marginBottom = `${6 + plan.margins[index]}px`;
-    }
   });
 
   if (plan.starts.length > 1) {
@@ -274,7 +196,6 @@ function applyColumnBreaks(box: HTMLElement, plan: ColumnPlan): () => void {
   return () => {
     plan.items.forEach((item) => {
       item.style.breakBefore = "";
-      item.style.marginBottom = "";
     });
     box.style.columnFill = "";
   };
@@ -346,7 +267,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
   const [printFit, setPrintFit] = usePersistentState<boolean>("guitar-chord-board:print-fit", true);
   const boxRef = useRef<HTMLDivElement>(null);
-  const [standPlan, setStandPlan] = useState<{ scale: number; starts: number[]; hasLegend: boolean; margins: number[] } | null>(null);
+  const [standPlan, setStandPlan] = useState<{ scale: number; starts: number[]; hasLegend: boolean } | null>(null);
   const songHasMelody = hasMelody(song);
   const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
   const standMode = paper.value !== "default" && layout === "lead";
@@ -427,7 +348,6 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
               scale: layoutResult.scale,
               starts: layoutResult.plan.starts,
               hasLegend: layoutResult.plan.hasLegend,
-              margins: layoutResult.plan.margins,
             }
           : null,
       );
@@ -800,7 +720,6 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           scale={standPlan.scale}
           starts={standPlan.starts}
           hasLegend={standPlan.hasLegend}
-          margins={standPlan.margins}
           printCols={printCols}
           title={song.title.trim() || "和弦譜"}
           meta={`${printMeta}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`}
