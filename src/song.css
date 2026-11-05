@@ -2054,3 +2054,108 @@ body.is-performing {
   align-items: stretch;
   padding-right: 0.5em;
 }
+
+/* 1.4.0-exp.10：連續接排（小節折行、一列放整數個小節） */
+.lead-sheet--flow {
+  position: relative;
+}
+
+.lead-sheet--flow .lead-line__cells {
+  flex-wrap: wrap;
+}
+
+.lead-flow-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lead-flow-probe {
+  height: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* 1.4.0-exp.10：上下間距微調（--sp-* 由 LeadSheet 設定，預設 0） */
+.lead-sheet {
+  --sp-chord: 0px;
+  --sp-melody: 0px;
+  --sp-lyric: 0px;
+  --sp-row: 0px;
+}
+
+.lead-cell__chordrow {
+  margin-block: var(--sp-chord);
+}
+
+.mel-row {
+  margin-block: var(--sp-melody);
+}
+
+.lead-cell__lyrics {
+  row-gap: var(--sp-lyric);
+}
+
+.lead-line {
+  padding-block: calc(8px + var(--sp-row));
+}
+
+@media print {
+  .lead-line {
+    padding-block: calc(4px + var(--sp-row));
+  }
+}
+
+.stand-col .lead-line {
+  padding-block: calc(4px + var(--sp-row));
+}
+
+.spacing-tune {
+  flex: 1 1 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+
+.spacing-tune summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.spacing-tune__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 18px;
+  margin-top: 8px;
+}
+
+.spacing-tune label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.spacing-tune input[type="range"] {
+  width: 100%;
+}
+
+@media print {
+  .spacing-tune {
+    display: none;
+  }
+}
+
+/* 譜架列印：外層頁面上方的留白（34px）會吃掉第一頁高度，列印時去掉，版面才和預覽一致 */
+@media print {
+  .workspace--overview:has(.print-scale-box[data-paper]) {
+    padding-top: 0 !important;
+  }
+}

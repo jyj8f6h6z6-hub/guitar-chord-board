@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Song } from "../../types/song";
-import type { DiagramMode } from "../song/LeadSheet";
+import type { DiagramMode, Spacing } from "../song/LeadSheet";
 import { LeadSheet } from "../song/LeadSheet";
 
 interface StandPreviewProps {
@@ -18,7 +18,11 @@ interface StandPreviewProps {
   scale: number;
   /** 每一欄第一個項目的編號（項目＝上方圖例＋每一行譜） */
   starts: readonly number[];
-  hasLegend: boolean;
+  /** 連續接排後的每一列（和弦編號） */
+  rows: readonly (readonly number[])[];
+  /** 圖例分成幾塊（每塊幾張圖） */
+  legendRows: readonly number[];
+  spacing: Spacing;
   printCols: number;
   title: string;
   meta: string;
@@ -27,7 +31,6 @@ interface StandPreviewProps {
 interface ColumnPart {
   start: number;
   end: number;
-  legend: boolean;
 }
 
 /** 螢幕上的譜架預覽：一頁一張橫向紙張，左右兩欄，版面與列印結果相同。 */
@@ -42,7 +45,9 @@ export function StandPreview({
   gap,
   scale,
   starts,
-  hasLegend,
+  rows,
+  legendRows,
+  spacing,
   printCols,
   title,
   meta,
@@ -70,18 +75,12 @@ export function StandPreview({
     return () => observer.disconnect();
   }, [paperPx]);
 
-  const offset = hasLegend ? 1 : 0;
-  const lineCount = song.lines.length;
-  const itemCount = lineCount + offset;
+  const itemCount = rows.length + legendRows.length;
 
-  const columns: ColumnPart[] = starts.map((start, index) => {
-    const end = index + 1 < starts.length ? starts[index + 1] : itemCount;
-    return {
-      start: Math.max(0, start - offset),
-      end: Math.max(0, end - offset),
-      legend: hasLegend && start === 0,
-    };
-  });
+  const columns: ColumnPart[] = starts.map((start, index) => ({
+    start,
+    end: index + 1 < starts.length ? starts[index + 1] : itemCount,
+  }));
 
   const pages: ColumnPart[][] = [];
 
@@ -124,7 +123,11 @@ export function StandPreview({
                     diagramMode={diagramMode}
                     diagramWidth={diagramWidth}
                     showMelody={showMelody}
-                    part={part}
+                    part={{ ...part, legend: false }}
+                    legendRows={legendRows}
+                    flow
+                    spacing={spacing}
+                    rows={rows}
                     stretch
                   />
                 </div>

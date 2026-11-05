@@ -1,7 +1,10 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { findChordShapes } from "../../data/chordShapes";
 import { MELODY_BEAT_EM, assignLyric, layoutLineMelody } from "../../services/melody";
 import type { LineMelodyLayout, MelodyColumn } from "../../services/melody";
+import { buildFlowCells, packRows } from "../../services/flow";
+import type { FlowCell } from "../../services/flow";
 import { effectiveBarIds, effectiveSections, itemBeats, itemCapacity } from "../../services/songModel";
 import type { Song, SongItem } from "../../types/song";
 import { ChordDiagram } from "../chord/ChordDiagram";
@@ -45,6 +48,60 @@ interface LeadSheetProps {
   part?: { start: number; end: number; legend: boolean };
   /** 譜架模式：每一行的和弦依拍數拉開，填滿整欄寬 */
   stretch?: boolean;
+  /** 連續接排：不再一行歌譜一列，而是依欄寬把和弦折成一列一列（只在小節線折行，段落開頭另起一列） */
+  flow?: boolean;
+  /** 連續接排時由外部算好的每一列（欄編號）；沒有給就自己依寬度排。part 此時指的是第幾列 */
+  rows?: readonly (readonly number[])[] | null;
+  /** 連續接排時，量好每個和弦的自然寬度後通知外部（外部據此排列） */
+  onFlowMetrics?: (metrics: FlowMetrics) => void;
+  /** 連續接排時，即使有給 rows 也要量寬度（譜架模式的量測用） */
+  measureWidths?: boolean;
+  /** 上下間距微調 */
+  spacing?: Spacing;
+  /** 連續接排時，上方圖例每一塊放幾張圖（一塊一列，才能分到不同欄）；沒給就是一整塊 */
+  legendRows?: readonly number[];
+}
+
+/** 上下間距微調（像素，可為負）：和弦名稱、旋律、歌詞（各節之間）、列與列之間 */
+export interface Spacing {
+  chord: number;
+  melody: number;
+  lyric: number;
+  row: number;
+}
+
+export const DEFAULT_SPACING: Spacing = { chord: 0, melody: 0, lyric: 0, row: 0 };
+
+export interface FlowMetrics {
+  cells: FlowCell[];
+  widths: number[];
+}
+
+interface CellContext {
+  rowCount: number;
+  flags: LineMelodyLayout | null;
+  showVerseNo: boolean;
+}
+
+function mergeFlags(list: readonly (LineMelodyLayout | null)[]): LineMelodyLayout | null {
+  const real = list.filter((entry): entry is LineMelodyLayout => entry !== null);
+
+  if (real.length === 0) {
+    return null;
+  }
+
+  return {
+    cells: new Map(),
+    hasAny: real.some((entry) => entry.hasAny),
+    needHigh: real.some((entry) => entry.needHigh),
+    needLow: real.some((entry) => entry.needLow),
+    needSlur: real.some((entry) => entry.needSlur),
+    needLines: real.some((entry) => entry.needLines),
+  };
+}
+
+function contentWidth(element: HTMLElement): number {
+  return element.clientWidth - (parseFloat(getComputedStyle(element).paddingLeft) || 0);
 }
 
 interface DiagramEntry {
@@ -180,9 +237,20 @@ export function LeadSheet({
   onLineClick,
   part,
   stretch = false,
+  flow = false,
+  rows: rowsProp,
+  onFlowMetrics,
+  measureWidths = false,
+  spacing,
+  legendRows,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLDivElement>(null);
+  const metricsCallback = useRef(onFlowMetrics);
+  metricsCallback.current = onFlowMetrics;
 
   // 每個和弦（名稱＋按法）第一次出現的位置，圖例與「首次出現小圖」共用。
   const { firstIds, legend } = useMemo(() => {
@@ -208,6 +276,25 @@ export function LeadSheet({
     return { firstIds: ids, legend: entries };
   }, [song, symbols]);
 
+  // 每一行歌譜的固定資料（歌詞節數、旋律排版、房子、是否標節號）
+  const lineInfo = useMemo(
+    () =>
+      song.lines.map((line, lineIndex) => {
+        const verses = verseRows(line);
+        const melody = showMelody ? layoutLineMelody(line.items, (item) => itemCapacity(song, item)) : null;
+
+        return {
+          verses,
+          melody,
+          melodyLine: melody?.hasAny === true,
+          voltas: voltaRanges(line.items),
+          // 比照原譜：每個段落的第一行，如果有 2 節以上歌詞，才標「一、二、…」。
+          numbered: verses >= 2 && (line.section !== "" || lineIndex === 0),
+        };
+      }),
+    [song, showMelody],
+  );
+
   // 凸排：整首歌只要有一行標了節號，每一行左邊都留出同樣寬的空白，歌詞左緣才會對齊。
   const lastItemId = [...song.lines].reverse().find((line) => line.items.length > 0)?.items.slice(-1)[0]?.id ?? null;
 
@@ -215,20 +302,310 @@ export function LeadSheet({
     (line, lineIndex) => verseRows(line) >= 2 && (line.section !== "" || lineIndex === 0),
   );
 
-  return (
-    <div className={`lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}${stretch ? " lead-sheet--stretch" : ""}`}>
-      {diagramMode === "legend" && legend.length > 0 && (!part || part.legend) && (
-        <div className="lead-legend" aria-label="本曲和弦按法">
-          {legend.map((entry) => (
-            <figure className="lead-legend__item" key={entry.key}>
-              <DiagramFigure entry={entry} width={diagramWidth} />
-              <figcaption className="lead-cell__chord">
-                <ChordName symbol={entry.symbol} />
-              </figcaption>
-            </figure>
-          ))}
+  // ---- 連續接排：量每個和弦的自然寬度，再依欄寬排成列 ----
+  const flowCells = useMemo(() => (flow ? buildFlowCells(song, bars) : []), [flow, song, bars]);
+  const measureKey = useMemo(() => ({}), [song, symbols, diagramMode, diagramWidth, showMelody, large, stretch, flow]);
+  const [measured, setMeasured] = useState<{ key: object; widths: number[]; avail: number } | null>(null);
+  const [liveAvail, setLiveAvail] = useState<number | null>(null);
+  const widths = measured && measured.key === measureKey ? measured.widths : null;
+  const needMeasure = flow && widths === null && (measureWidths || !rowsProp);
+
+  useLayoutEffect(() => {
+    if (!needMeasure) {
+      return;
+    }
+
+    const container = measureRef.current;
+    const probe = probeRef.current?.querySelector<HTMLElement>(".lead-line__cells");
+
+    if (!container) {
+      return;
+    }
+
+    const measuredWidths = Array.from(container.children).map((element) => (element as HTMLElement).getBoundingClientRect().width);
+    const avail = probe ? contentWidth(probe) : 0;
+    setMeasured({ key: measureKey, widths: measuredWidths, avail });
+    setLiveAvail(avail);
+  }, [needMeasure, measureKey]);
+
+  const hasMetricsCallback = onFlowMetrics !== undefined;
+
+  useEffect(() => {
+    if (widths) {
+      metricsCallback.current?.({ cells: flowCells, widths });
+    }
+  }, [widths, flowCells, hasMetricsCallback]);
+
+  // 自己排列時（沒有外部給 rows），欄寬改變就重排
+  useEffect(() => {
+    const root = rootRef.current;
+
+    if (!flow || rowsProp || needMeasure || !root || typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const update = () => {
+      const cells = root.querySelector<HTMLElement>(".lead-line__cells");
+
+      if (cells) {
+        const next = contentWidth(cells);
+        setLiveAvail((previous) => (previous !== null && Math.abs(previous - next) < 0.5 ? previous : next));
+      }
+    };
+
+    const observer = new ResizeObserver(update);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [flow, rowsProp, needMeasure]);
+
+  const selfRows = useMemo(() => {
+    if (!flow || rowsProp || !widths) {
+      return null;
+    }
+
+    const avail = liveAvail ?? measured?.avail ?? 0;
+    return avail > 0 ? packRows(flowCells, widths, avail - 2, 0) : null;
+  }, [flow, rowsProp, widths, liveAvail, measured, flowCells]);
+
+  const flowRows = rowsProp ?? selfRows;
+  const rowsValid = flowRows !== null && flowRows.every((row) => row.every((index) => index < flowCells.length));
+
+  function renderCell(lineIndex: number, itemIndex: number, context: CellContext): ReactNode {
+    const line = song.lines[lineIndex];
+    const item = line.items[itemIndex];
+    const info = lineInfo[lineIndex];
+    const override = symbols?.[item.id];
+    const symbol = override ?? item.symbol;
+    const beats = itemBeats(song, item);
+    const lyricRows = (item.lyric || "").split("\n");
+    const rowCount = context.rowCount;
+    const showDiagram = diagramMode === "all" || (diagramMode === "first" && firstIds.has(item.id));
+    const entry: DiagramEntry = {
+      key: item.id,
+      symbol,
+      shapeId: override !== undefined && override !== item.symbol ? undefined : item.shapeId,
+    };
+    const columns = info.melody?.cells.get(item.id) ?? null;
+    const flags = context.flags;
+    const bar = barKind(item, item.id === lastItemId, bars.has(item.id));
+    const volta = info.voltas.get(item.id);
+    const assigned = columns
+      ? Array.from({ length: rowCount }, (_, rowIndex) => assignLyric(columns, lyricRows[rowIndex] ?? ""))
+      : null;
+    const hasSlots = columns ? columns.some((column) => column.syllable) : false;
+    const minWidth = info.melodyLine
+      ? `${(itemCapacity(song, item) * MELODY_BEAT_EM).toFixed(2)}em`
+      : beats
+        ? `${beats * BEAT_WIDTH_EM}em`
+        : undefined;
+    const topClasses = ["lead-cell__top", bar ? `has-bar bar--${bar}` : "", item.repeatStart ? "has-repeat-start" : ""]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <Fragment key={item.id}>
+        <div
+          className={`lead-cell${item.repeatStart ? " is-repeat-start" : ""}`}
+          style={
+            stretch
+              ? { minWidth, flexGrow: Math.max(itemCapacity(song, item) || beats || 1, 0.5), flexShrink: 0 }
+              : minWidth
+                ? { minWidth }
+                : undefined
+          }
+        >
+          {volta && <div className={`lead-cell__volta${volta.first ? " is-first" : ""}`}>{volta.first ? volta.label : ""}</div>}
+
+          {showDiagram && <DiagramFigure entry={entry} width={diagramWidth} />}
+
+          <div className={topClasses}>
+            <div className="lead-cell__chordrow">
+              <strong className="lead-cell__chord">
+                <ChordName symbol={symbol} />
+              </strong>
+            </div>
+
+            {columns && flags && (
+              <div className="mel-row">
+                {columns.map((column) => (
+                  <MelodyColumnView key={column.key} column={column} flags={flags} stretch={stretch} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <span className="lead-cell__lyrics">
+            {Array.from({ length: rowCount }, (_, rowIndex) => {
+              const verseNo = context.showVerseNo && (
+                <span className="verse-no">{VERSE_NUMBERS[rowIndex] ?? rowIndex + 1}、</span>
+              );
+
+              if (columns && assigned && hasSlots) {
+                return (
+                  <span className="lead-cell__lyric is-aligned" key={rowIndex}>
+                    {verseNo}
+                    {columns.map((column, columnIndex) => (
+                      <span
+                        className="syl"
+                        key={column.key}
+                        style={
+                          stretch
+                            ? { minWidth: `${column.widthEm}em`, flexGrow: Math.max(column.beats, 0.25), flexBasis: `${column.widthEm}em` }
+                            : { minWidth: `${column.widthEm}em` }
+                        }
+                      >
+                        {assigned[rowIndex][columnIndex] || " "}
+                      </span>
+                    ))}
+                  </span>
+                );
+              }
+
+              return (
+                <span className="lead-cell__lyric" key={rowIndex}>
+                  {verseNo}
+                  {lyricRows[rowIndex] || " "}
+                </span>
+              );
+            })}
+          </span>
         </div>
-      )}
+      </Fragment>
+    );
+  }
+
+  const renderLegend = (entries: readonly DiagramEntry[], key: string) => (
+    <div className="lead-legend" aria-label="本曲和弦按法" key={key}>
+      {entries.map((entry) => (
+        <figure className="lead-legend__item" key={entry.key}>
+          <DiagramFigure entry={entry} width={diagramWidth} />
+          <figcaption className="lead-cell__chord">
+            <ChordName symbol={entry.symbol} />
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+
+  const showLegend = diagramMode === "legend" && legend.length > 0;
+  const legendBlock = showLegend && (!part || part.legend) && renderLegend(legend, "legend");
+
+  // 連續接排：圖例也分成一塊一塊（每塊一列），和各列一起依序排進各欄
+  const legendChunks: DiagramEntry[][] = [];
+
+  if (showLegend) {
+    const counts = legendRows && legendRows.length > 0 ? legendRows : [legend.length];
+    let from = 0;
+
+    for (const count of counts) {
+      legendChunks.push(legend.slice(from, from + count));
+      from += count;
+    }
+
+    if (from < legend.length) {
+      legendChunks.push(legend.slice(from));
+    }
+  }
+
+  const rootStyle = spacing
+    ? ({
+        "--sp-chord": `${spacing.chord}px`,
+        "--sp-melody": `${spacing.melody}px`,
+        "--sp-lyric": `${spacing.lyric}px`,
+        "--sp-row": `${spacing.row}px`,
+      } as CSSProperties)
+    : undefined;
+  const rootClass = `lead-sheet${large ? " lead-sheet--large" : ""}${hasGutter ? " has-gutter" : ""}${stretch ? " lead-sheet--stretch" : ""}${flow ? " lead-sheet--flow" : ""}`;
+
+  if (flow) {
+    const rowList = rowsValid && flowRows && !(needMeasure) ? flowRows : [];
+    const blocks: ({ kind: "legend"; entries: DiagramEntry[] } | { kind: "row"; row: readonly number[] })[] = [
+      ...legendChunks.map((entries) => ({ kind: "legend" as const, entries })),
+      ...rowList.map((row) => ({ kind: "row" as const, row })),
+    ];
+    const visible = part ? blocks.slice(part.start, part.end) : blocks;
+
+    return (
+      <div className={rootClass} ref={rootRef} style={rootStyle}>
+
+        {needMeasure && (
+          <>
+            <div className="lead-flow-measure" ref={measureRef} aria-hidden="true">
+              {flowCells.map((cell) =>
+                renderCell(cell.lineIndex, cell.itemIndex, {
+                  rowCount: Math.max(lineInfo[cell.lineIndex].verses, 1),
+                  flags: lineInfo[cell.lineIndex].melody,
+                  showVerseNo: false,
+                }),
+              )}
+            </div>
+            <div className="lead-line lead-flow-probe" ref={probeRef} aria-hidden="true">
+              <div className="lead-line__label" />
+              <div className="lead-line__cells" />
+            </div>
+          </>
+        )}
+
+        {visible.map((block, rowIndex) => {
+          if (block.kind === "legend") {
+            return renderLegend(block.entries, `legend-${(part?.start ?? 0) + rowIndex}`);
+          }
+
+          const row = block.row;
+          const first = flowCells[row[0]];
+          const lineIndex = first.lineIndex;
+          const section = sections[lineIndex];
+          const isChorus = section.kind === "chorus";
+          const startsLine = first.itemIndex === 0;
+          const lineIndexes = Array.from(new Set(row.map((index) => flowCells[index].lineIndex)));
+          const isMarked = markedLineId !== null && lineIndexes.some((index) => song.lines[index].id === markedLineId);
+          const rowCount = Math.max(1, ...lineIndexes.map((index) => lineInfo[index].verses));
+          const flags = mergeFlags(lineIndexes.map((index) => lineInfo[index].melody));
+          const numbered = startsLine && lineInfo[lineIndex].numbered;
+          const classes = [
+            "lead-line",
+            isChorus ? "is-chorus" : "",
+            isMarked ? "is-marked" : "",
+            numbered ? "is-numbered" : "",
+            onLineClick ? "is-clickable" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          return (
+            <div
+              key={`${row[0]}-${(part?.start ?? 0) + rowIndex}`}
+              className={classes}
+              data-line-id={song.lines[lineIndex].id}
+              onClick={onLineClick ? () => onLineClick(song.lines[lineIndex].id) : undefined}
+            >
+              <div className="lead-line__label">
+                {isMarked && <span className="lead-line__marker">▶ 唱到這裡</span>}
+                {startsLine && section.badge && (
+                  <span className={`section-badge${isChorus ? " section-badge--chorus" : ""}`}>{section.badge}</span>
+                )}
+              </div>
+
+              <div className="lead-line__cells">
+                {row.map((index) => {
+                  const cell = flowCells[index];
+                  return renderCell(cell.lineIndex, cell.itemIndex, {
+                    rowCount,
+                    flags,
+                    showVerseNo: numbered && cell.itemIndex === 0 && index === row[0],
+                  });
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className={rootClass} ref={rootRef} style={rootStyle}>
+      {legendBlock}
 
       {song.lines.map((line, lineIndex) => {
         if (part && (lineIndex < part.start || lineIndex >= part.end)) {
@@ -238,17 +615,12 @@ export function LeadSheet({
         const section = sections[lineIndex];
         const isChorus = section.kind === "chorus";
         const isMarked = markedLineId === line.id;
-        const rows = verseRows(line);
-        const melody = showMelody ? layoutLineMelody(line.items, (item) => itemCapacity(song, item)) : null;
-        const melodyLine = melody?.hasAny === true;
-        const voltas = voltaRanges(line.items);
-        // 比照原譜：每個段落的第一行，如果有 2 節以上歌詞，才標「一、二、…」。
-        const numbered = rows >= 2 && (line.section !== "" || lineIndex === 0);
+        const info = lineInfo[lineIndex];
         const classes = [
           "lead-line",
           isChorus ? "is-chorus" : "",
           isMarked ? "is-marked" : "",
-          numbered ? "is-numbered" : "",
+          info.numbered ? "is-numbered" : "",
           onLineClick ? "is-clickable" : "",
         ]
           .filter(Boolean)
@@ -271,113 +643,13 @@ export function LeadSheet({
             <div className="lead-line__cells">
               {line.items.length === 0 && <span className="lead-line__empty">（空白行）</span>}
 
-              {line.items.map((item, itemIndex) => {
-                const override = symbols?.[item.id];
-                const symbol = override ?? item.symbol;
-                const beats = itemBeats(song, item);
-                const lyricRows = (item.lyric || "").split("\n");
-                const rowCount = Math.max(rows, 1);
-                const showDiagram = diagramMode === "all" || (diagramMode === "first" && firstIds.has(item.id));
-                const entry: DiagramEntry = {
-                  key: item.id,
-                  symbol,
-                  shapeId: override !== undefined && override !== item.symbol ? undefined : item.shapeId,
-                };
-                const columns = melody?.cells.get(item.id) ?? null;
-                const bar = barKind(item, item.id === lastItemId, bars.has(item.id));
-                const volta = voltas.get(item.id);
-                const assigned = columns
-                  ? Array.from({ length: rowCount }, (_, rowIndex) => assignLyric(columns, lyricRows[rowIndex] ?? ""))
-                  : null;
-                const hasSlots = columns ? columns.some((column) => column.syllable) : false;
-                const minWidth = melodyLine
-                  ? `${(itemCapacity(song, item) * MELODY_BEAT_EM).toFixed(2)}em`
-                  : beats
-                    ? `${beats * BEAT_WIDTH_EM}em`
-                    : undefined;
-                const topClasses = [
-                  "lead-cell__top",
-                  bar ? `has-bar bar--${bar}` : "",
-                  item.repeatStart ? "has-repeat-start" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-
-                return (
-                  <Fragment key={item.id}>
-                    <div
-                      className={`lead-cell${item.repeatStart ? " is-repeat-start" : ""}`}
-                      style={
-                        stretch
-                          ? { minWidth, flexGrow: Math.max(itemCapacity(song, item) || beats || 1, 0.5), flexShrink: 0 }
-                          : minWidth
-                            ? { minWidth }
-                            : undefined
-                      }
-                    >
-                      {volta && (
-                        <div className={`lead-cell__volta${volta.first ? " is-first" : ""}`}>
-                          {volta.first ? volta.label : ""}
-                        </div>
-                      )}
-
-                      {showDiagram && <DiagramFigure entry={entry} width={diagramWidth} />}
-
-                      <div className={topClasses}>
-                        <div className="lead-cell__chordrow">
-                          <strong className="lead-cell__chord">
-                            <ChordName symbol={symbol} />
-                          </strong>
-                        </div>
-
-                        {columns && melody && (
-                          <div className="mel-row">
-                            {columns.map((column) => (
-                              <MelodyColumnView key={column.key} column={column} flags={melody} stretch={stretch} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <span className="lead-cell__lyrics">
-                        {Array.from({ length: rowCount }, (_, rowIndex) => {
-                          const verseNo = numbered && itemIndex === 0 && (
-                            <span className="verse-no">{VERSE_NUMBERS[rowIndex] ?? rowIndex + 1}、</span>
-                          );
-
-                          if (columns && assigned && hasSlots) {
-                            return (
-                              <span className="lead-cell__lyric is-aligned" key={rowIndex}>
-                                {verseNo}
-                                {columns.map((column, columnIndex) => (
-                                  <span
-                                    className="syl"
-                                    key={column.key}
-                                    style={
-                                      stretch
-                                        ? { minWidth: `${column.widthEm}em`, flexGrow: Math.max(column.beats, 0.25), flexBasis: `${column.widthEm}em` }
-                                        : { minWidth: `${column.widthEm}em` }
-                                    }
-                                  >
-                                    {assigned[rowIndex][columnIndex] || " "}
-                                  </span>
-                                ))}
-                              </span>
-                            );
-                          }
-
-                          return (
-                            <span className="lead-cell__lyric" key={rowIndex}>
-                              {verseNo}
-                              {lyricRows[rowIndex] || " "}
-                            </span>
-                          );
-                        })}
-                      </span>
-                    </div>
-                  </Fragment>
-                );
-              })}
+              {line.items.map((_item, itemIndex) =>
+                renderCell(lineIndex, itemIndex, {
+                  rowCount: Math.max(info.verses, 1),
+                  flags: info.melody,
+                  showVerseNo: info.numbered && itemIndex === 0,
+                }),
+              )}
             </div>
           </div>
         );
