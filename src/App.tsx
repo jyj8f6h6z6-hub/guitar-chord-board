@@ -4,7 +4,6 @@ import { APP_VERSION, experimentalLabel } from "./version";
 import { SingleChordSearch } from "./components/search/SingleChordSearch";
 import { SongChordMode } from "./components/search/SongChordMode";
 import { SongChordOverview } from "./components/search/SongChordOverview";
-import { PerformView } from "./components/song/PerformView";
 import { SongBar } from "./components/song/SongBar";
 import "./mode3.css";
 
@@ -171,22 +170,6 @@ function App() {
               <span className="nav-label-long">精簡總覽與移調</span>
               <span className="nav-label-short">總覽移調</span>
             </button>
-
-            <span className="arrangement-navigation__arrow" aria-hidden="true">
-              →
-            </span>
-
-            <button
-              type="button"
-              className={`arrangement-navigation__step${
-                mode === "perform" ? " is-active" : ""
-              }`}
-              onClick={() => setMode("perform")}
-            >
-              <span className="arrangement-navigation__number">③</span>
-              <span className="nav-label-long">演奏模式</span>
-              <span className="nav-label-short">演奏</span>
-            </button>
           </div>
         </nav>
 
@@ -199,7 +182,7 @@ function App() {
           </div>
         )}
 
-        {mode !== "single" && <SongBar library={library} showShare={mode !== "perform"} />}
+        {mode !== "single" && <SongBar library={library} showShare />}
 
         {mode === "single" && <SingleChordSearch />}
 
@@ -216,15 +199,7 @@ function App() {
             song={song}
             onApplyTransposition={applyTransposition}
             onKeyChange={changeKey}
-            onPerform={() => setMode("perform")}
           />
-        )}
-
-        {mode === "perform" && (
-          <>
-            <div className="notice">演奏模式已開啟。按「✕ 結束」或 Esc 可離開。</div>
-            <PerformView song={song} onExit={() => setMode("overview")} />
-          </>
         )}
       </main>
 

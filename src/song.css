@@ -2190,3 +2190,411 @@ body.is-performing {
     display: none;
   }
 }
+
+/* ================= 1.4.0-exp.12：總覽重做（左側設定面板、符合螢幕、螢幕版面、演奏） ================= */
+.overview-layout {
+  position: relative;
+  display: block;
+}
+
+.overview-layout.has-dock {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.overview-layout.has-dock > .overview-panel-toggle {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.overview-layout.has-dock > .overview-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.overview-layout.has-dock > .overview-main {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.overview-panel-toggle,
+.overview-perform-exit {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.overview-panel-toggle {
+  margin-bottom: 10px;
+}
+
+.overview-layout.has-dock > .overview-panel-toggle {
+  margin-bottom: 0;
+}
+
+.overview-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.overview-panel[hidden] {
+  display: none;
+}
+
+.overview-panel--dock {
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+}
+
+.overview-panel--float {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  z-index: 1100;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 72px);
+  overflow: auto;
+  background: rgba(20, 22, 30, 0.94);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.overview-panel-toggle.is-float,
+.overview-panel-toggle.is-perform {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1150;
+  margin: 0;
+  background: rgba(20, 22, 30, 0.85);
+}
+
+.overview-perform-exit {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1150;
+  background: rgba(20, 22, 30, 0.85);
+}
+
+.overview-panel__section {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview-panel__section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.overview-panel__section > h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.overview-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.overview-panel .segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.overview-panel .overview-transpose-panel {
+  margin: 0;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+}
+
+.overview-panel .overview-transpose-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.overview-panel .overview-transpose-arrow {
+  justify-self: center;
+}
+
+.overview-panel .spacing-tune {
+  padding: 6px 8px;
+}
+
+.stepper-range {
+  display: grid;
+  gap: 4px;
+}
+
+.stepper-range__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.stepper-range__box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper-range__box button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.stepper-range__box button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stepper-range__box input,
+.stepper-range__box select {
+  width: 4.6em;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.stepper-range__unit {
+  min-width: 2.2em;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.stepper-range > input[type="range"] {
+  width: 100%;
+}
+
+.overview-main {
+  min-width: 0;
+}
+
+.stand-preview__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.stand-preview__bar .stand-preview__note {
+  margin: 0;
+}
+
+.stand-preview__pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.stand-preview__pager button,
+.stand-preview__perform-pager button {
+  width: 40px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stand-preview__pager button:disabled,
+.stand-preview__perform-pager button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stand-preview__pages {
+  justify-content: center;
+}
+
+.stand-preview.is-actual .stand-preview__pages {
+  gap: 0;
+}
+
+.stand-preview__perform-pager {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  z-index: 1050;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 22, 30, 0.7);
+  color: #ffffff;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.stand-preview__perform-pager button {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 演奏：只剩譜，佔滿整個畫面 */
+.workspace--overview.is-performing .workspace__intro,
+.workspace--overview.is-performing .song-overview-summary {
+  display: none;
+}
+
+.workspace--overview.is-performing .overview-main {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #d8d8dd;
+}
+
+.stand-preview.is-performing .stand-page {
+  box-shadow: none;
+}
+
+@media (max-width: 1000px) {
+  .overview-layout.has-dock {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .overview-layout.has-dock > .overview-panel,
+  .overview-layout.has-dock > .overview-main {
+    grid-column: 1;
+  }
+
+  .overview-layout.has-dock > .overview-panel {
+    grid-row: 2;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    max-height: 45vh;
+  }
+
+  .overview-layout.has-dock > .overview-main {
+    grid-row: 3;
+  }
+}
+
+@media print {
+  .overview-panel,
+  .overview-panel-toggle,
+  .overview-perform-exit,
+  .stand-preview__perform-pager,
+  .stand-preview__bar {
+    display: none !important;
+  }
+
+  .overview-layout,
+  .overview-layout.has-dock {
+    display: block !important;
+  }
+
+  .workspace--overview.is-performing .overview-main {
+    position: static !important;
+    overflow: visible !important;
+  }
+}
+
+/* 設定面板內的移調區：縮小成緊湊版 */
+.overview-panel .overview-transpose-panel__heading {
+  margin-bottom: 8px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.overview-panel .overview-transpose-panel__heading h3 {
+  font-size: 1rem;
+}
+
+.overview-panel .overview-transpose-controls {
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+
+.overview-panel .overview-key-field select {
+  aspect-ratio: auto;
+  min-height: 38px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2, rgba(16, 18, 26, 0.78));
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.overview-panel .overview-transpose-arrow {
+  padding: 0 0 8px;
+  font-size: 1.1rem;
+  align-self: end;
+}
+
+.overview-panel .overview-transpose-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overview-panel .overview-transpose-actions .primary-button,
+.overview-panel .overview-transpose-actions .secondary-button {
+  width: auto;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+/* 螢幕／演奏：按鈕放在畫面下緣，不蓋住標題與譜 */
+.overview-panel-toggle.is-float,
+.overview-panel-toggle.is-perform {
+  top: auto;
+  bottom: 10px;
+}
+
+.overview-panel--float {
+  top: auto;
+  bottom: 56px;
+  max-height: calc(100vh - 72px);
+}

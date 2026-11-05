@@ -7,80 +7,44 @@ import {
   transposeChordSymbol,
 } from "../../services/chordTranspose";
 import { packRows } from "../../services/flow";
+import {
+  COLS_MAX,
+  DEFAULT_OVERVIEW_SETTINGS,
+  DIAGRAM_MAX,
+  DIAGRAM_MIN,
+  PT_MAX,
+  PT_MIN,
+  SPACING_RANGE,
+  loadOverviewSettings,
+  saveOverviewSettings,
+} from "../../services/overviewSettings";
+import type { OverviewSettings } from "../../services/overviewSettings";
 import { allItems, countItems, effectiveSections, hasMelody, songMeta } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
-import type { DiagramMode, DiagramSize, FlowMetrics, Spacing } from "../song/LeadSheet";
-import { DEFAULT_SPACING, DIAGRAM_MODE_LABELS, DIAGRAM_SIZES, LeadSheet } from "../song/LeadSheet";
+import type { DiagramMode, FlowMetrics, Spacing } from "../song/LeadSheet";
+import { DIAGRAM_MODE_LABELS, LeadSheet } from "../song/LeadSheet";
 import { StandPreview } from "./StandPreview";
+import type { PaperSpec, ViewMode } from "./StandPreview";
+import { PtSelect, StepperRange } from "./OverviewControls";
 
 type OverviewLayout = "lead" | "cards" | "unique";
 
-/** 歌詞字級（pt）：旋律、和弦名稱依比例跟著變；和弦圖另外用滑桿調整。 */
-const PT_MIN = 14;
-const PT_MAX = 36;
+/** 歌詞字級（pt）的下拉選項；也可以用 − ＋ 一格一格調。 */
 const PT_PRESETS = [14, 15, 16, 18, 20, 22, 24, 28, 32, 36];
-const DIAGRAM_MIN = 60;
-const DIAGRAM_MAX = 400;
-const COLS_MAX = 12;
 
-/** 舊版存的「和弦圖大小」（標準／大／特大）換算成像素，當作滑桿的初始值。 */
-function legacyDiagramPx(): number {
-  try {
-    const raw = window.localStorage.getItem("guitar-chord-board:diagram-size");
-    const key = raw ? (JSON.parse(raw) as DiagramSize) : null;
-    return key && DIAGRAM_SIZES[key] ? DIAGRAM_SIZES[key].width : 72;
-  } catch {
-    return 72;
-  }
-}
+/** 紙張：預設＝瀏覽器的設定；A3／A4 橫式＝左右兩欄（譜架用）；螢幕＝一頁就是整個畫面（平板橫放）。尺寸單位 mm。 */
+type PrintPaper = "default" | "a3" | "a4" | "screen";
 
-function PtInput({ value, onChange }: { value: number; onChange: (next: number) => void }) {
-  const [text, setText] = useState(String(value));
+const PAPER_A4: PaperSpec = { value: "a4", label: "A4 橫式", name: "A4", width: 297, height: 210, margin: 12, gap: 12 };
 
-  useEffect(() => {
-    setText(String(value));
-  }, [value]);
-
-  const commit = () => {
-    const parsed = Math.round(Number(text));
-    const next = Number.isFinite(parsed) && text.trim() !== "" ? Math.min(PT_MAX, Math.max(PT_MIN, parsed)) : value;
-    setText(String(next));
-    onChange(next);
-  };
-
-  return (
-    <input
-      type="number"
-      className="pt-input"
-      list="lyric-pt-presets"
-      min={PT_MIN}
-      max={PT_MAX}
-      step={1}
-      value={text}
-      aria-label="歌詞字級（pt）"
-      onChange={(event) => setText(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          commit();
-        }
-      }}
-    />
-  );
-}
-
-/** 列印紙張：預設＝瀏覽器的設定；A3／A4 橫式＝左右兩欄（譜架用）。尺寸單位 mm。 */
-type PrintPaper = "default" | "a3" | "a4";
-
-const PRINT_PAPERS: readonly { value: PrintPaper; label: string; name: string; width: number; height: number }[] = [
-  { value: "default", label: "預設", name: "", width: 0, height: 0 },
-  { value: "a3", label: "A3 橫式（譜架）", name: "A3", width: 420, height: 297 },
-  { value: "a4", label: "A4 橫式", name: "A4", width: 297, height: 210 },
+const PRINT_PAPERS: readonly PaperSpec[] = [
+  { value: "default", label: "預設", name: "", width: 0, height: 0, margin: 0, gap: 0 },
+  { value: "a3", label: "A3 橫式（譜架）", name: "A3", width: 420, height: 297, margin: 12, gap: 12 },
+  PAPER_A4,
+  { value: "screen", label: "螢幕（平板橫放）", name: "A4", width: 0, height: 0, margin: 6, gap: 6 },
 ];
 
-const PAPER_MARGIN_MM = 12;
-const PAPER_GAP_MM = 12;
 const MIN_FIT = 0.25;
 
 const PX_PER_MM = 96 / 25.4;
@@ -89,6 +53,8 @@ interface StandRows {
   scale: number;
   rows: number[][];
   legendRows: number[];
+  /** 這組排列是依哪一種紙張（尺寸）算的 */
+  paperKey: string;
 }
 
 interface StandPlan extends StandRows {
@@ -141,8 +107,8 @@ function withPrintStyles<T>(box: HTMLElement, columnPx: number, scale: number, p
   }
 }
 
-function columnWidthPx(paper: { width: number }): number {
-  return ((paper.width - 2 * PAPER_MARGIN_MM - PAPER_GAP_MM) / 2) * PX_PER_MM;
+function columnWidthPx(paper: PaperSpec): number {
+  return ((paper.width - 2 * paper.margin - paper.gap) / 2) * PX_PER_MM;
 }
 
 /**
@@ -151,7 +117,7 @@ function columnWidthPx(paper: { width: number }): number {
  */
 function planFlowRows(
   box: HTMLElement,
-  paper: { width: number },
+  paper: PaperSpec,
   printScale: number,
   printFit: boolean,
   printCols: number,
@@ -214,7 +180,7 @@ function planFlowRows(
   const scale = printScale * fit;
   const avail = columnPx / scale - overhead - 2;
 
-  return { scale, rows: packRows(metrics.cells, metrics.widths, avail, printCols), legendRows: measured?.legendRows ?? [] };
+  return { scale, rows: packRows(metrics.cells, metrics.widths, avail, printCols), legendRows: measured?.legendRows ?? [], paperKey: "" };
 }
 
 /**
@@ -223,12 +189,12 @@ function planFlowRows(
  */
 function planColumns(
   box: HTMLElement,
-  paper: { width: number; height: number },
+  paper: PaperSpec,
   scale: number,
   printCols: number,
 ): { starts: number[] } | null {
   const columnPx = columnWidthPx(paper);
-  const pageHeight = (paper.height - 2 * PAPER_MARGIN_MM) * PX_PER_MM;
+  const pageHeight = (paper.height - 2 * paper.margin) * PX_PER_MM;
 
   // 標題在第一頁佔掉的高度：預覽已經畫出來就直接量，否則用標準值（A3／A4 都一樣）
   const previewHeader = document.querySelector<HTMLElement>(".stand-page__header");
@@ -304,36 +270,44 @@ interface SongChordOverviewProps {
   song: Song;
   onApplyTransposition: (symbols: readonly string[], newKey: string) => void;
   onKeyChange: (key: string) => void;
-  onPerform: () => void;
 }
 
-export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onPerform }: SongChordOverviewProps) {
+export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: SongChordOverviewProps) {
   const sourceKey = song.key ?? "C";
   const setSourceKey = onKeyChange;
   const [targetKey, setTargetKey] = useState("D");
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [layout, setLayout] = usePersistentState<OverviewLayout>("guitar-chord-board:overview-layout", "lead");
-  const [diagramPx, setDiagramPx] = usePersistentState<number>("guitar-chord-board:diagram-px", legacyDiagramPx());
-  const [lyricPt, setLyricPt] = usePersistentState<number>("guitar-chord-board:lyric-pt", PT_MIN);
-  const [diagramMode, setDiagramMode] = usePersistentState<DiagramMode>("guitar-chord-board:diagram-mode", "legend");
-  const [printCols, setPrintCols] = usePersistentState<number>("guitar-chord-board:print-cols", 0);
+  const [settings, setSettingsState] = useState<OverviewSettings>(() => loadOverviewSettings(song.id));
   const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
   const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
   const [printFit, setPrintFit] = usePersistentState<boolean>("guitar-chord-board:print-fit", true);
-  const [spChord, setSpChord] = usePersistentState<number>("guitar-chord-board:sp-chord", 0);
-  const [spMelody, setSpMelody] = usePersistentState<number>("guitar-chord-board:sp-melody", 0);
-  const [spLyric, setSpLyric] = usePersistentState<number>("guitar-chord-board:sp-lyric", 0);
-  const [spRow, setSpRow] = usePersistentState<number>("guitar-chord-board:sp-row", 0);
-  const spacing = useMemo<Spacing>(
-    () => ({ chord: spChord, melody: spMelody, lyric: spLyric, row: spRow }),
-    [spChord, spMelody, spLyric, spRow],
-  );
-  const setSpacing = (next: Spacing) => {
-    setSpChord(next.chord);
-    setSpMelody(next.melody);
-    setSpLyric(next.lyric);
-    setSpRow(next.row);
+  const [viewMode, setViewMode] = usePersistentState<ViewMode>("guitar-chord-board:stand-view", "page");
+  const [panelOpen, setPanelOpen] = usePersistentState<boolean>("guitar-chord-board:overview-panel", true);
+  const [performing, setPerforming] = useState(false);
+  const [performPanel, setPerformPanel] = useState(false);
+  const [printOverride, setPrintOverride] = useState(false);
+  const previousPaper = useRef<PrintPaper>("default");
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [hostWidth, setHostWidth] = useState(1000);
+  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
+
+  // 換歌就換成那首歌各自記住的設定（新歌沿用上一次的設定）
+  useEffect(() => {
+    setSettingsState(loadOverviewSettings(song.id));
+  }, [song.id]);
+
+  const updateSettings = (patch: Partial<OverviewSettings>) => {
+    const next = { ...settings, ...patch };
+    setSettingsState(next);
+    saveOverviewSettings(song.id, next);
   };
+
+  const { lyricPt, diagramPx, printCols, diagramMode } = settings;
+  const spacing = useMemo<Spacing>(
+    () => ({ chord: settings.spChord, melody: settings.spMelody, lyric: settings.spLyric, row: settings.spRow }),
+    [settings.spChord, settings.spMelody, settings.spLyric, settings.spRow],
+  );
   const boxRef = useRef<HTMLDivElement>(null);
   const [flowMetrics, setFlowMetrics] = useState<FlowMetrics | null>(null);
   const [standRows, setStandRows] = useState<StandRows | null>(null);
@@ -341,7 +315,17 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
   const standPlanRef = useRef<StandPlan | null>(null);
   standPlanRef.current = standPlan;
   const songHasMelody = hasMelody(song);
-  const paper = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
+  const screenHeightPx = performing ? viewportHeight : Math.max(360, viewportHeight - 130);
+  const basePaper = useMemo<PaperSpec>(() => {
+    const found = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
+    return found.value === "screen"
+      ? { ...found, width: hostWidth / PX_PER_MM, height: screenHeightPx / PX_PER_MM }
+      : found;
+  }, [printPaper, hostWidth, screenHeightPx]);
+  // 螢幕版面按「列印」時，暫時改用 A4 橫式重新排版
+  const paper = printOverride ? PAPER_A4 : basePaper;
+  const actualSize = !printOverride && printPaper === "screen";
+  const paperKey = `${paper.value}:${Math.round(paper.width)}x${Math.round(paper.height)}`;
   const standMode = paper.value !== "default" && layout === "lead";
   // 簡譜風格的字級用歌詞 pt 直接設定；其他排版（卡片、不重複和弦）沿用整體縮放，14pt ＝ 原大小
   const printScale = layout === "lead" ? 1 : lyricPt / PT_MIN;
@@ -380,6 +364,108 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
     };
   }, [standMode, printScale, paper, layout]);
 
+  // 量預覽區的寬度（螢幕版面的頁寬）與視窗高度
+  useEffect(() => {
+    const update = () => {
+      setViewportHeight(window.innerHeight);
+      setHostWidth(performing ? window.innerWidth : Math.floor(hostRef.current?.clientWidth ?? 1000));
+    };
+    update();
+    window.addEventListener("resize", update);
+    const host = hostRef.current;
+    const observer = host && typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+
+    if (host) {
+      observer?.observe(host);
+    }
+
+    return () => {
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  }, [performing, printPaper, panelOpen]);
+
+  // 螢幕版面：先用 A4 重新排好版，再開列印視窗；列印完還原
+  useEffect(() => {
+    if (!printOverride) {
+      return undefined;
+    }
+
+    const done = () => setPrintOverride(false);
+    window.addEventListener("afterprint", done);
+    const ready = standPlan !== null && standPlan.paperKey.startsWith("a4:");
+    const timer = ready ? window.setTimeout(() => window.print(), 120) : undefined;
+
+    return () => {
+      window.removeEventListener("afterprint", done);
+
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [printOverride, standPlan]);
+
+  function printNow() {
+    if (printPaper === "screen") {
+      setPrintOverride(true);
+    } else {
+      window.print();
+    }
+  }
+
+  function enterPerform() {
+    if (layout !== "lead") {
+      setLayout("lead");
+    }
+
+    previousPaper.current = printPaper;
+    setPrintPaper("screen");
+    setPerformPanel(false);
+    setPerforming(true);
+
+    try {
+      void document.documentElement.requestFullscreen?.();
+    } catch {
+      // 不支援全螢幕時，只隱藏其他畫面。
+    }
+  }
+
+  function exitPerform() {
+    setPerforming(false);
+    setPrintPaper(previousPaper.current === "screen" ? "default" : previousPaper.current);
+
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.();
+    }
+  }
+
+  useEffect(() => {
+    if (!performing) {
+      return undefined;
+    }
+
+    document.body.classList.add("is-performing");
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        exitPerform();
+      }
+    };
+    const onFullscreen = () => {
+      if (!document.fullscreenElement) {
+        exitPerform();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("fullscreenchange", onFullscreen);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("fullscreenchange", onFullscreen);
+      document.body.classList.remove("is-performing");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [performing]);
+
   const items = useMemo(() => allItems(song), [song]);
   const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
   const total = countItems(song);
@@ -411,7 +497,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
 
     const compute = () => {
       if (!cancelled) {
-        setStandRows(planFlowRows(box, paper, printScale, printFit, printCols, flowMetrics));
+        const planned = planFlowRows(box, paper, printScale, printFit, printCols, flowMetrics);
+        setStandRows(planned ? { ...planned, paperKey } : null);
       }
     };
 
@@ -421,7 +508,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
     return () => {
       cancelled = true;
     };
-  }, [standMode, printFit, printScale, paper, printCols, flowMetrics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [standMode, printFit, printScale, paperKey, paper, printCols, flowMetrics]);
 
   // 譜架版面第二步：排好列之後，量每一列真正的高度，依序塞進各欄。
   useEffect(() => {
@@ -467,8 +555,11 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
     setIsPreviewing(false);
   }
 
+  const panelDock = !performing && printPaper !== "screen";
+  const panelVisible = performing ? performPanel : panelOpen;
+
   return (
-    <section className="workspace workspace--overview" aria-labelledby="overview-mode-title">
+    <section className={`workspace workspace--overview${performing ? " is-performing" : ""}`} aria-labelledby="overview-mode-title">
       <div className="workspace__intro">
         <p className="eyebrow">和弦編排・第二步</p>
         <h2 id="overview-mode-title">總覽與移調</h2>
@@ -484,356 +575,368 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
         )}
       </div>
 
-      <div className="overview-toolbar">
-        <div className="segmented-control" role="group" aria-label="總覽排版">
-          {(Object.keys(LAYOUT_LABELS) as OverviewLayout[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={layout === key ? "is-active" : ""}
-              aria-pressed={layout === key}
-              onClick={() => setLayout(key)}
-            >
-              {LAYOUT_LABELS[key]}
-            </button>
-          ))}
-        </div>
+      <div className={`overview-layout${panelDock && panelVisible ? " has-dock" : ""}`}>
+        <button
+          type="button"
+          className={`overview-panel-toggle${performing ? " is-perform" : ""}${panelDock ? "" : " is-float"}`}
+          onClick={() => (performing ? setPerformPanel(!performPanel) : setPanelOpen(!panelOpen))}
+          aria-expanded={panelVisible}
+        >
+          {panelVisible ? "隱藏設定" : "⚙ 顯示設定"}
+        </button>
 
-        {layout === "lead" && (
-          <div className="segmented-control" role="group" aria-label="和弦按法圖">
-            {(Object.keys(DIAGRAM_MODE_LABELS) as DiagramMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={diagramMode === mode ? "is-active" : ""}
-                aria-pressed={diagramMode === mode}
-                onClick={() => setDiagramMode(mode)}
-                title={mode === "off" ? "熟悉之後可以關掉按法圖" : undefined}
-              >
-                {DIAGRAM_MODE_LABELS[mode]}
-              </button>
-            ))}
-          </div>
+        {performing && (
+          <button type="button" className="overview-perform-exit" onClick={exitPerform}>
+            ✕ 結束演奏
+          </button>
         )}
 
-        {layout === "lead" && diagramMode !== "off" && (
-          <label className="slider-control">
-            <span>和弦圖大小：{diagramPx}px</span>
-            <input
-              type="range"
-              min={DIAGRAM_MIN}
-              max={DIAGRAM_MAX}
-              step={2}
-              value={diagramPx}
-              onChange={(event) => setDiagramPx(Number(event.target.value))}
-              aria-label="和弦圖大小"
-            />
-          </label>
-        )}
-
-        {layout === "lead" && songHasMelody && (
-          <div className="segmented-control" role="group" aria-label="簡譜旋律">
-            <button type="button" className={showMelody ? "is-active" : ""} aria-pressed={showMelody} onClick={() => setShowMelody(true)}>
-              顯示旋律
-            </button>
-            <button type="button" className={!showMelody ? "is-active" : ""} aria-pressed={!showMelody} onClick={() => setShowMelody(false)}>
-              只看和弦歌詞
-            </button>
-          </div>
-        )}
-
-        <div className="slider-control pt-control">
-          <span>歌詞字級（pt）</span>
-          <PtInput value={lyricPt} onChange={setLyricPt} />
-          <datalist id="lyric-pt-presets">
-            {PT_PRESETS.map((pt) => (
-              <option key={pt} value={pt} />
-            ))}
-          </datalist>
-        </div>
-
-        {layout === "lead" && (
-          <label className="slider-control">
-            <span>列印每行：{printCols === 0 ? "自動" : `${printCols} 個和弦`}</span>
-            <input
-              type="range"
-              min={1}
-              max={COLS_MAX}
-              step={1}
-              value={printCols === 0 ? 1 : printCols}
-              onChange={(event) => setPrintCols(Number(event.target.value) <= 1 ? 0 : Number(event.target.value))}
-              aria-label="列印每行和弦數"
-              title="最左邊＝自動。固定後每欄等寬、小節線上下對齊（只影響列印）"
-            />
-          </label>
-        )}
-
-        {layout === "lead" && (
-          <div className="segmented-control" role="group" aria-label="列印紙張">
-            <span className="segmented-control__label">列印紙張</span>
-            {PRINT_PAPERS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={printPaper === option.value ? "is-active" : ""}
-                aria-pressed={printPaper === option.value}
-                onClick={() => setPrintPaper(option.value)}
-                title={
-                  option.value === "default"
-                    ? "使用瀏覽器列印視窗裡的紙張設定"
-                    : "橫放、左右兩欄，一行不會被切在兩欄之間；列印視窗的「每張工作表頁數」請保持 1"
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {standMode && printCols > 0 && (
-          <div className="segmented-control" role="group" aria-label="整行不換排">
-            <button
-              type="button"
-              className={printFit ? "is-active" : ""}
-              aria-pressed={printFit}
-              onClick={() => setPrintFit(!printFit)}
-              title="列印時自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
-            >
-              整行不換排（自動縮小）
-            </button>
-          </div>
-        )}
-
-        {layout === "lead" && (
-          <details className="spacing-tune">
-            <summary>上下間距微調（和弦、旋律、歌詞、列與列）</summary>
-            <div className="spacing-tune__grid">
-              {(
-                [
-                  ["chord", "和弦名稱上下", -6, 24],
-                  ["melody", "旋律上下", -6, 24],
-                  ["lyric", "歌詞各節之間", -6, 24],
-                  ["row", "列與列之間", 0, 40],
-                ] as const
-              ).map(([key, label, min, max]) => (
-                <label key={key}>
-                  <span>
-                    {label}：{spacing[key]}px
-                  </span>
-                  <input
-                    type="range"
-                    min={min}
-                    max={max}
-                    step={1}
-                    value={spacing[key]}
-                    onChange={(event) => setSpacing({ ...spacing, [key]: Number(event.target.value) })}
-                  />
-                </label>
+        <aside
+          className={`overview-panel overview-panel--${panelDock ? "dock" : "float"}`}
+          hidden={!panelVisible}
+          aria-label="總覽設定"
+        >
+          <div className="overview-panel__section">
+            <h3>排版</h3>
+            <div className="segmented-control" role="group" aria-label="總覽排版">
+              {(Object.keys(LAYOUT_LABELS) as OverviewLayout[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={layout === key ? "is-active" : ""}
+                  aria-pressed={layout === key}
+                  onClick={() => setLayout(key)}
+                >
+                  {LAYOUT_LABELS[key]}
+                </button>
               ))}
-              <button type="button" className="ghost-button" onClick={() => setSpacing(DEFAULT_SPACING)}>
-                還原預設
+            </div>
+          </div>
+
+          <section className="overview-transpose-panel" aria-labelledby="overview-transpose-title">
+            <div className="overview-transpose-panel__heading">
+              <div>
+                <p className="eyebrow">移調</p>
+                <h3 id="overview-transpose-title">調整歌曲調性</h3>
+              </div>
+
+              {isPreviewing && sourceKey !== targetKey && (
+                <span className="overview-transpose-status">
+                  預覽中：{sourceKey} → {targetKey}
+                </span>
+              )}
+            </div>
+
+            <div className="overview-transpose-controls">
+              <label className="overview-key-field" htmlFor="overview-source-key">
+                <span className="overview-key-field__label">
+                  <span aria-hidden="true">♫</span>
+                  原調
+                </span>
+                <select
+                  id="overview-source-key"
+                  value={sourceKey}
+                  onChange={(event) => {
+                    setSourceKey(event.target.value);
+                    setIsPreviewing(false);
+                  }}
+                >
+                  {KEY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <span className="overview-transpose-arrow" aria-hidden="true">
+                →
+              </span>
+
+              <label className="overview-key-field" htmlFor="overview-target-key">
+                <span className="overview-key-field__label">
+                  <span aria-hidden="true">⇄</span>
+                  目標調
+                </span>
+                <select
+                  id="overview-target-key"
+                  value={targetKey}
+                  onChange={(event) => {
+                    setTargetKey(event.target.value);
+                    setIsPreviewing(false);
+                  }}
+                >
+                  {KEY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="overview-transpose-actions">
+              <button type="button" className="primary-button" onClick={() => setIsPreviewing(true)} disabled={total === 0}>
+                預覽移調
+              </button>
+              <button
+                type="button"
+                className="secondary-button transpose-apply-button"
+                onClick={applyTransposition}
+                disabled={total === 0 || !isPreviewing || sourceKey === targetKey}
+              >
+                套用到和弦編排區
+              </button>
+              <button
+                type="button"
+                className="secondary-button transpose-reset-button"
+                onClick={restoreOriginalKey}
+                disabled={!isPreviewing && sourceKey === targetKey}
+              >
+                恢復原調
               </button>
             </div>
-          </details>
-        )}
+          </section>
 
-        <div className="overview-toolbar__actions">
-          <button type="button" className="ghost-button" onClick={onPerform} disabled={total === 0}>
-            進入演奏模式
-          </button>
-          <button type="button" className="ghost-button" onClick={() => window.print()} disabled={total === 0}>
-            列印／存成 PDF
-          </button>
-        </div>
-      </div>
+          {layout === "lead" && (
+            <div className="overview-panel__section">
+              <h3>顯示</h3>
+              <div className="segmented-control" role="group" aria-label="和弦按法圖">
+                {(Object.keys(DIAGRAM_MODE_LABELS) as DiagramMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={diagramMode === mode ? "is-active" : ""}
+                    aria-pressed={diagramMode === mode}
+                    onClick={() => updateSettings({ diagramMode: mode })}
+                    title={mode === "off" ? "熟悉之後可以關掉按法圖" : undefined}
+                  >
+                    {DIAGRAM_MODE_LABELS[mode]}
+                  </button>
+                ))}
+              </div>
 
-      <section className="overview-transpose-panel" aria-labelledby="overview-transpose-title">
-        <div className="overview-transpose-panel__heading">
-          <div>
-            <p className="eyebrow">移調</p>
-            <h3 id="overview-transpose-title">調整歌曲調性</h3>
+              {songHasMelody && (
+                <div className="segmented-control" role="group" aria-label="簡譜旋律">
+                  <button type="button" className={showMelody ? "is-active" : ""} aria-pressed={showMelody} onClick={() => setShowMelody(true)}>
+                    顯示旋律
+                  </button>
+                  <button type="button" className={!showMelody ? "is-active" : ""} aria-pressed={!showMelody} onClick={() => setShowMelody(false)}>
+                    只看和弦歌詞
+                  </button>
+                </div>
+              )}
+
+              {diagramMode !== "off" && (
+                <StepperRange
+                  label="和弦圖大小"
+                  unit="px"
+                  value={diagramPx}
+                  min={DIAGRAM_MIN}
+                  max={DIAGRAM_MAX}
+                  onChange={(value) => updateSettings({ diagramPx: value })}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="overview-panel__section">
+            <h3>字級與間距</h3>
+            <PtSelect value={lyricPt} min={PT_MIN} max={PT_MAX} presets={PT_PRESETS} onChange={(value) => updateSettings({ lyricPt: value })} />
+
+            {layout === "lead" && (
+              <details className="spacing-tune">
+                <summary>上下間距微調</summary>
+                <div className="spacing-tune__grid">
+                  <StepperRange label="和弦名稱上下" unit="px" value={settings.spChord} min={SPACING_RANGE.chord[0]} max={SPACING_RANGE.chord[1]} onChange={(value) => updateSettings({ spChord: value })} />
+                  <StepperRange label="旋律上下" unit="px" value={settings.spMelody} min={SPACING_RANGE.melody[0]} max={SPACING_RANGE.melody[1]} onChange={(value) => updateSettings({ spMelody: value })} />
+                  <StepperRange label="歌詞各節之間" unit="px" value={settings.spLyric} min={SPACING_RANGE.lyric[0]} max={SPACING_RANGE.lyric[1]} onChange={(value) => updateSettings({ spLyric: value })} />
+                  <StepperRange label="列與列之間" unit="px" value={settings.spRow} min={SPACING_RANGE.row[0]} max={SPACING_RANGE.row[1]} onChange={(value) => updateSettings({ spRow: value })} />
+                </div>
+              </details>
+            )}
           </div>
 
-          {isPreviewing && sourceKey !== targetKey && (
-            <span className="overview-transpose-status">
-              預覽中：{sourceKey} → {targetKey}
+          {layout === "lead" && (
+            <div className="overview-panel__section">
+              <h3>紙張與列印</h3>
+              <div className="segmented-control segmented-control--wrap" role="group" aria-label="紙張">
+                {PRINT_PAPERS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={printPaper === option.value ? "is-active" : ""}
+                    aria-pressed={printPaper === option.value}
+                    onClick={() => setPrintPaper(option.value as PrintPaper)}
+                    title={
+                      option.value === "default"
+                        ? "使用瀏覽器列印視窗裡的紙張設定"
+                        : option.value === "screen"
+                          ? "一頁就是整個畫面（平板橫放用）；按列印時會改用 A4 橫式重新排版"
+                          : "橫放、左右兩欄，依序填滿；列印視窗的「每張工作表頁數」請保持 1"
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              {standMode && !actualSize && (
+                <div className="segmented-control" role="group" aria-label="預覽方式">
+                  <button type="button" className={viewMode === "page" ? "is-active" : ""} aria-pressed={viewMode === "page"} onClick={() => setViewMode("page")}>
+                    一頁一頁
+                  </button>
+                  <button type="button" className={viewMode === "scroll" ? "is-active" : ""} aria-pressed={viewMode === "scroll"} onClick={() => setViewMode("scroll")}>
+                    連續捲動
+                  </button>
+                </div>
+              )}
+
+              <StepperRange
+                label="列印每行和弦數"
+                value={printCols === 0 ? 1 : printCols}
+                min={1}
+                max={COLS_MAX}
+                valueText={(value) => (value <= 1 ? "自動" : "個")}
+                onChange={(value) => updateSettings({ printCols: value <= 1 ? 0 : value })}
+                hint="最左邊（1）＝自動。固定後每欄等寬、小節線上下對齊（只影響列印）"
+              />
+
+              {standMode && printCols > 0 && (
+                <div className="segmented-control" role="group" aria-label="整行不換排">
+                  <button
+                    type="button"
+                    className={printFit ? "is-active" : ""}
+                    aria-pressed={printFit}
+                    onClick={() => setPrintFit(!printFit)}
+                    title="列印時自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
+                  >
+                    整行不換排（自動縮小）
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="overview-panel__section overview-panel__actions">
+            <button type="button" className="ghost-button" onClick={enterPerform} disabled={total === 0}>
+              進入演奏模式
+            </button>
+            <button type="button" className="ghost-button" onClick={printNow} disabled={total === 0}>
+              列印／存成 PDF
+            </button>
+            <button type="button" className="ghost-button" onClick={() => updateSettings({ ...DEFAULT_OVERVIEW_SETTINGS })}>
+              還原預設
+            </button>
+          </div>
+        </aside>
+
+        <div className="overview-main" ref={hostRef}>
+          <div className="song-overview-summary" aria-live="polite">
+            <strong>
+              {song.lines.length} 行・{total} 個和弦
+            </strong>
+            <span>
+              {isPreviewing ? "目前顯示移調預覽，尚未修改第一步的和弦編排。" : "內容與第一步建立的和弦編排同步。"}
             </span>
+          </div>
+
+          {standMode && <style>{`@page { size: ${paper.name} landscape; margin: 12mm; }`}</style>}
+
+          <div
+            ref={boxRef}
+            className={`print-scale-box${standMode ? " is-stand-hidden" : ""}`}
+            data-paper={standMode ? paper.value : undefined}
+            data-print-cols={printCols > 0 ? printCols : undefined}
+            style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
+          >
+          {total === 0 ? (
+            <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
+          ) : layout === "lead" ? (
+            <LeadSheet
+              song={song}
+              symbols={symbolById}
+              diagramMode={diagramMode}
+              diagramWidth={diagramPx}
+              showMelody={showMelody}
+              stretch
+              flow
+              spacing={spacing}
+              lyricPt={lyricPt}
+              rows={standMode ? standRows?.rows : undefined}
+              legendRows={standMode ? standRows?.legendRows : undefined}
+              measureWidths={standMode}
+              onFlowMetrics={standMode ? setFlowMetrics : undefined}
+            />
+          ) : layout === "cards" ? (
+            <div className="cards-by-line">
+              {song.lines.map((line, lineIndex) => {
+                const section = sections[lineIndex];
+
+                return (
+                  <div key={line.id} className={`cards-line${section.kind === "chorus" ? " is-chorus" : ""}`}>
+                    {section.badge && (
+                      <span className={`section-badge${section.kind === "chorus" ? " section-badge--chorus" : ""}`}>
+                        {section.badge}
+                      </span>
+                    )}
+
+                    <div className="song-overview-grid">
+                      {line.items.map((item) => (
+                        <div className="song-overview-item" key={item.id}>
+                          <ChordCard
+                            symbol={displayed(item.id, item.symbol)}
+                            compact
+                            eyebrow={isPreviewing ? "移調預覽" : "歌曲和弦"}
+                            selectedShapeId={isPreviewing ? undefined : item.shapeId}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="song-overview-grid">
+              {uniqueEntries.map((entry) => (
+                <div className="song-overview-item" key={entry.symbol}>
+                  <ChordCard
+                    symbol={entry.symbol}
+                    compact
+                    eyebrow={`出現 ${entry.count} 次`}
+                    selectedShapeId={entry.shapeId}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          </div>
+
+          {standMode && standPlan && !printOverride && (
+            <StandPreview
+              song={song}
+              symbols={symbolById}
+              diagramMode={diagramMode}
+              diagramWidth={diagramPx}
+              showMelody={showMelody}
+              paper={paper}
+              scale={standPlan.scale}
+              starts={standPlan.starts}
+              rows={standPlan.rows}
+              spacing={spacing}
+              lyricPt={lyricPt}
+              legendRows={standPlan.legendRows}
+              viewMode={viewMode}
+              actualSize={actualSize}
+              performing={performing}
+              printCols={printCols}
+              title={song.title.trim() || "和弦譜"}
+              meta={`${printMeta}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`}
+            />
           )}
         </div>
-
-        <div className="overview-transpose-controls">
-          <label className="overview-key-field" htmlFor="overview-source-key">
-            <span className="overview-key-field__label">
-              <span aria-hidden="true">♫</span>
-              原調
-            </span>
-            <select
-              id="overview-source-key"
-              value={sourceKey}
-              onChange={(event) => {
-                setSourceKey(event.target.value);
-                setIsPreviewing(false);
-              }}
-            >
-              {KEY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <span className="overview-transpose-arrow" aria-hidden="true">
-            →
-          </span>
-
-          <label className="overview-key-field" htmlFor="overview-target-key">
-            <span className="overview-key-field__label">
-              <span aria-hidden="true">⇄</span>
-              目標調
-            </span>
-            <select
-              id="overview-target-key"
-              value={targetKey}
-              onChange={(event) => {
-                setTargetKey(event.target.value);
-                setIsPreviewing(false);
-              }}
-            >
-              {KEY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="overview-transpose-actions">
-          <button type="button" className="primary-button" onClick={() => setIsPreviewing(true)} disabled={total === 0}>
-            預覽移調
-          </button>
-          <button
-            type="button"
-            className="secondary-button transpose-apply-button"
-            onClick={applyTransposition}
-            disabled={total === 0 || !isPreviewing || sourceKey === targetKey}
-          >
-            套用到和弦編排區
-          </button>
-          <button
-            type="button"
-            className="secondary-button transpose-reset-button"
-            onClick={restoreOriginalKey}
-            disabled={!isPreviewing && sourceKey === targetKey}
-          >
-            恢復原調
-          </button>
-        </div>
-      </section>
-
-      <div className="song-overview-summary" aria-live="polite">
-        <strong>
-          {song.lines.length} 行・{total} 個和弦
-        </strong>
-        <span>
-          {isPreviewing ? "目前顯示移調預覽，尚未修改第一步的和弦編排。" : "內容與第一步建立的和弦編排同步。"}
-        </span>
       </div>
-
-      {standMode && <style>{`@page { size: ${paper.name} landscape; margin: ${PAPER_MARGIN_MM}mm; }`}</style>}
-
-      <div
-        ref={boxRef}
-        className={`print-scale-box${standMode ? " is-stand-hidden" : ""}`}
-        data-paper={standMode ? paper.value : undefined}
-        data-print-cols={printCols > 0 ? printCols : undefined}
-        style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
-      >
-      {total === 0 ? (
-        <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
-      ) : layout === "lead" ? (
-        <LeadSheet
-          song={song}
-          symbols={symbolById}
-          diagramMode={diagramMode}
-          diagramWidth={diagramPx}
-          showMelody={showMelody}
-          stretch
-          flow
-          spacing={spacing}
-          lyricPt={lyricPt}
-          rows={standMode ? standRows?.rows : undefined}
-          legendRows={standMode ? standRows?.legendRows : undefined}
-          measureWidths={standMode}
-          onFlowMetrics={standMode ? setFlowMetrics : undefined}
-        />
-      ) : layout === "cards" ? (
-        <div className="cards-by-line">
-          {song.lines.map((line, lineIndex) => {
-            const section = sections[lineIndex];
-
-            return (
-              <div key={line.id} className={`cards-line${section.kind === "chorus" ? " is-chorus" : ""}`}>
-                {section.badge && (
-                  <span className={`section-badge${section.kind === "chorus" ? " section-badge--chorus" : ""}`}>
-                    {section.badge}
-                  </span>
-                )}
-
-                <div className="song-overview-grid">
-                  {line.items.map((item) => (
-                    <div className="song-overview-item" key={item.id}>
-                      <ChordCard
-                        symbol={displayed(item.id, item.symbol)}
-                        compact
-                        eyebrow={isPreviewing ? "移調預覽" : "歌曲和弦"}
-                        selectedShapeId={isPreviewing ? undefined : item.shapeId}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="song-overview-grid">
-          {uniqueEntries.map((entry) => (
-            <div className="song-overview-item" key={entry.symbol}>
-              <ChordCard
-                symbol={entry.symbol}
-                compact
-                eyebrow={`出現 ${entry.count} 次`}
-                selectedShapeId={entry.shapeId}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      </div>
-
-      {standMode && standPlan && (
-        <StandPreview
-          song={song}
-          symbols={symbolById}
-          diagramMode={diagramMode}
-          diagramWidth={diagramPx}
-          showMelody={showMelody}
-          paper={paper}
-          margin={PAPER_MARGIN_MM}
-          gap={PAPER_GAP_MM}
-          scale={standPlan.scale}
-          starts={standPlan.starts}
-          rows={standPlan.rows}
-          spacing={spacing}
-          lyricPt={lyricPt}
-          legendRows={standPlan.legendRows}
-          printCols={printCols}
-          title={song.title.trim() || "和弦譜"}
-          meta={`${printMeta}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`}
-        />
-      )}
     </section>
   );
 }
