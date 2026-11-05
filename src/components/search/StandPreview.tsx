@@ -192,7 +192,7 @@ export function StandPreview({
         <div className="stand-preview__bar">
           <span className="stand-preview__note">
             預覽：{paper.name && !actualSize ? `${paper.name} 橫式` : "螢幕（平板橫放）"}，共 {pages.length} 頁，{perPage === 1 ? "單欄。" : "依序填滿左欄再右欄。"}
-            {actualSize ? "列印時會改用 A4 橫式重新排版。" : "實際列印是白底黑字，版面與這裡相同。"}
+            {actualSize ? "" : "實際列印是白底黑字，版面與這裡相同。"}
           </span>
           {paged && pages.length > 1 && (
             <span className="stand-preview__pager">
@@ -234,7 +234,7 @@ export function StandPreview({
                 </header>
               )}
 
-              <div className={`stand-page__cols${perPage === 1 ? " is-single" : ""}`} style={{ columnGap: `${paper.gap}mm`, gridTemplateColumns: perPage === 1 ? "1fr" : undefined }}>
+              <div className={`stand-page__cols${perPage === 1 || actualSize ? " is-single" : ""}`} style={{ columnGap: `${paper.gap}mm`, gridTemplateColumns: perPage === 1 ? "1fr" : undefined }}>
                 {page.map((part, columnIndex) => (
                   <div className="stand-col" key={columnIndex}>
                     <LeadSheet

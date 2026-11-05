@@ -288,6 +288,14 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const [performing, setPerforming] = useState(false);
   const [performPanel, setPerformPanel] = useState(false);
   const [floatPanel, setFloatPanel] = useState(false);
+  // 觸控裝置（平板）：只有「預設」「螢幕」；電腦：只有「預設」「A3」「A4」
+  const [isTablet, setIsTablet] = useState(() => window.matchMedia("(pointer: coarse)").matches);
+  useEffect(() => {
+    const query = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsTablet(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [printOverride, setPrintOverride] = useState(false);
   const previousPaper = useRef<PrintPaper>("default");
   const hostRef = useRef<HTMLDivElement>(null);
@@ -563,6 +571,21 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
     setIsPreviewing(false);
   }
 
+  // 之前存的紙張在這個裝置上沒有時，改回預設（演奏中除外）
+  useEffect(() => {
+    if (performing) {
+      return;
+    }
+
+    if (isTablet ? printPaper === "a3" || printPaper === "a4" : printPaper === "screen") {
+      setPrintPaper("default");
+    }
+  }, [isTablet, performing, printPaper, setPrintPaper]);
+
+  const paperOptions = PRINT_PAPERS.filter((option) =>
+    option.value === "default" ? true : isTablet ? option.value === "screen" : option.value !== "screen",
+  );
+
   const panelDock = !performing && printPaper !== "screen";
   const panelVisible = performing ? performPanel : panelDock ? panelOpen : floatPanel;
 
@@ -769,7 +792,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
             <div className="overview-panel__section">
               <h3>紙張與列印</h3>
               <div className="segmented-control segmented-control--wrap" role="group" aria-label="紙張">
-                {PRINT_PAPERS.map((option) => (
+                {paperOptions.map((option) => (
                   <button
                     key={option.value}
                     type="button"
@@ -783,7 +806,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
                       option.value === "default"
                         ? "使用瀏覽器列印視窗裡的紙張設定"
                         : option.value === "screen"
-                          ? "一頁就是整個畫面（平板橫放用）；按列印時會改用 A4 橫式重新排版"
+                          ? "一頁就是整個畫面（平板橫放用）"
                           : "橫放、左右兩欄，依序填滿；列印視窗的「每張工作表頁數」請保持 1"
                     }
                   >
@@ -833,9 +856,11 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
             <button type="button" className="ghost-button" onClick={enterPerform} disabled={total === 0}>
               進入演奏模式
             </button>
-            <button type="button" className="ghost-button" onClick={printNow} disabled={total === 0}>
-              列印／存成 PDF
-            </button>
+            {!isTablet && (
+              <button type="button" className="ghost-button" onClick={printNow} disabled={total === 0}>
+                列印／存成 PDF
+              </button>
+            )}
             <button type="button" className="ghost-button" onClick={() => updateSettings({ ...DEFAULT_OVERVIEW_SETTINGS })}>
               還原預設
             </button>
