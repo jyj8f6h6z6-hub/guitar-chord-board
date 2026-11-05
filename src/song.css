@@ -2598,3 +2598,25 @@ body.is-performing {
   bottom: 56px;
   max-height: calc(100vh - 72px);
 }
+
+/* 1.4.0-exp.13：單欄螢幕版面、浮動面板不擋翻頁列 */
+.stand-page__cols.is-single::before {
+  display: none;
+}
+
+.overview-panel--float {
+  max-height: min(70vh, calc(100vh - 140px));
+}
+
+@media (max-width: 700px) {
+  .overview-panel--float {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+.overview-panel .segmented-control button {
+  white-space: nowrap;
+}

@@ -10,12 +10,11 @@ import type { Song, SongItem } from "../../types/song";
 import { ChordDiagram } from "../chord/ChordDiagram";
 import { ChordName } from "../chord/ChordName";
 
-export type DiagramMode = "legend" | "first" | "all" | "off";
+export type DiagramMode = "legend" | "all" | "off";
 export type DiagramSize = "medium" | "large" | "xlarge";
 
 export const DIAGRAM_MODE_LABELS: Record<DiagramMode, string> = {
   legend: "上方圖例",
-  first: "首次出現小圖",
   all: "每個和弦都顯示",
   off: "不顯示",
 };
@@ -255,10 +254,9 @@ export function LeadSheet({
   const metricsCallback = useRef(onFlowMetrics);
   metricsCallback.current = onFlowMetrics;
 
-  // 每個和弦（名稱＋按法）第一次出現的位置，圖例與「首次出現小圖」共用。
-  const { firstIds, legend } = useMemo(() => {
+  // 每個和弦（名稱＋按法）第一次出現的位置，用來做上方圖例。
+  const legend = useMemo(() => {
     const seen = new Set<string>();
-    const ids = new Set<string>();
     const entries: DiagramEntry[] = [];
 
     for (const line of song.lines) {
@@ -270,13 +268,12 @@ export function LeadSheet({
 
         if (!seen.has(key)) {
           seen.add(key);
-          ids.add(item.id);
           entries.push({ key, symbol, shapeId });
         }
       }
     }
 
-    return { firstIds: ids, legend: entries };
+    return entries;
   }, [song, symbols]);
 
   // 每一行歌譜的固定資料（歌詞節數、旋律排版、房子、是否標節號）
@@ -382,7 +379,7 @@ export function LeadSheet({
     const beats = itemBeats(song, item);
     const lyricRows = (item.lyric || "").split("\n");
     const rowCount = context.rowCount;
-    const showDiagram = diagramMode === "all" || (diagramMode === "first" && firstIds.has(item.id));
+    const showDiagram = diagramMode === "all";
     const entry: DiagramEntry = {
       key: item.id,
       symbol,

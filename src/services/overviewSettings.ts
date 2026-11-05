@@ -32,7 +32,7 @@ export const DEFAULT_OVERVIEW_SETTINGS: OverviewSettings = {
 
 const MAP_KEY = "guitar-chord-board:song-settings:v1";
 const LAST_KEY = "guitar-chord-board:song-settings:last:v1";
-const DIAGRAM_MODES: readonly DiagramMode[] = ["legend", "first", "all", "off"];
+const DIAGRAM_MODES: readonly DiagramMode[] = ["legend", "all", "off"];
 
 function readJson(key: string): unknown {
   try {
@@ -63,6 +63,7 @@ function sanitize(raw: unknown): OverviewSettings | null {
     spMelody: clamp(source.spMelody, SPACING_RANGE.melody[0], SPACING_RANGE.melody[1], 0),
     spLyric: clamp(source.spLyric, SPACING_RANGE.lyric[0], SPACING_RANGE.lyric[1], 0),
     spRow: clamp(source.spRow, SPACING_RANGE.row[0], SPACING_RANGE.row[1], 0),
+    // 舊版的「首次出現小圖」已取消，一律改成上方圖例
     diagramMode: DIAGRAM_MODES.includes(source.diagramMode as DiagramMode)
       ? (source.diagramMode as DiagramMode)
       : defaults.diagramMode,

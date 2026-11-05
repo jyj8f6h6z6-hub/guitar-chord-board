@@ -14,6 +14,8 @@ export interface PaperSpec {
   height: number;
   margin: number;
   gap: number;
+  /** 每頁幾欄（省略＝2；窄螢幕或直立的螢幕版面用 1） */
+  columns?: number;
 }
 
 export type ViewMode = "page" | "scroll";
@@ -78,6 +80,7 @@ export function StandPreview({
   const [availHeight, setAvailHeight] = useState(() => Math.max(300, window.innerHeight - 130));
   const [pageIndex, setPageIndex] = useState(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const perPage = paper.columns ?? 2;
   const paperPx = paper.width * PX_PER_MM;
   const paperPxHeight = paper.height * PX_PER_MM;
 
@@ -116,8 +119,8 @@ export function StandPreview({
 
   const pages: ColumnPart[][] = [];
 
-  for (let index = 0; index < columns.length; index += 2) {
-    pages.push(columns.slice(index, index + 2));
+  for (let index = 0; index < columns.length; index += perPage) {
+    pages.push(columns.slice(index, index + perPage));
   }
 
   const current = Math.min(pageIndex, Math.max(0, pages.length - 1));
@@ -188,7 +191,7 @@ export function StandPreview({
       {!performing && (
         <div className="stand-preview__bar">
           <span className="stand-preview__note">
-            預覽：{paper.name && !actualSize ? `${paper.name} 橫式` : "螢幕（平板橫放）"}，共 {pages.length} 頁，依序填滿左欄再右欄。
+            預覽：{paper.name && !actualSize ? `${paper.name} 橫式` : "螢幕（平板橫放）"}，共 {pages.length} 頁，{perPage === 1 ? "單欄。" : "依序填滿左欄再右欄。"}
             {actualSize ? "列印時會改用 A4 橫式重新排版。" : "實際列印是白底黑字，版面與這裡相同。"}
           </span>
           {paged && pages.length > 1 && (
@@ -231,7 +234,7 @@ export function StandPreview({
                 </header>
               )}
 
-              <div className="stand-page__cols" style={{ columnGap: `${paper.gap}mm` }}>
+              <div className={`stand-page__cols${perPage === 1 ? " is-single" : ""}`} style={{ columnGap: `${paper.gap}mm`, gridTemplateColumns: perPage === 1 ? "1fr" : undefined }}>
                 {page.map((part, columnIndex) => (
                   <div className="stand-col" key={columnIndex}>
                     <LeadSheet

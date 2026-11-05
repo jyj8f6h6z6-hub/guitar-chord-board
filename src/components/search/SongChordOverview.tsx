@@ -108,7 +108,8 @@ function withPrintStyles<T>(box: HTMLElement, columnPx: number, scale: number, p
 }
 
 function columnWidthPx(paper: PaperSpec): number {
-  return ((paper.width - 2 * paper.margin - paper.gap) / 2) * PX_PER_MM;
+  const columns = paper.columns ?? 2;
+  return ((paper.width - 2 * paper.margin - paper.gap * (columns - 1)) / columns) * PX_PER_MM;
 }
 
 /**
@@ -212,7 +213,7 @@ function planColumns(
     return null;
   }
 
-  const capacity = (column: number) => (column < 2 ? pageHeight - headerHeight : pageHeight) * 0.997;
+  const capacity = (column: number) => (column < (paper.columns ?? 2) ? pageHeight - headerHeight : pageHeight) * 0.997;
 
   // 依序塞滿：從左欄開始一列一列排，放不下才換下一欄（右欄、下一頁的左欄…）
   const starts = [0];
@@ -286,6 +287,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const [panelOpen, setPanelOpen] = usePersistentState<boolean>("guitar-chord-board:overview-panel", true);
   const [performing, setPerforming] = useState(false);
   const [performPanel, setPerformPanel] = useState(false);
+  const [floatPanel, setFloatPanel] = useState(false);
   const [printOverride, setPrintOverride] = useState(false);
   const previousPaper = useRef<PrintPaper>("default");
   const hostRef = useRef<HTMLDivElement>(null);
@@ -319,13 +321,19 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const basePaper = useMemo<PaperSpec>(() => {
     const found = PRINT_PAPERS.find((option) => option.value === printPaper) ?? PRINT_PAPERS[0];
     return found.value === "screen"
-      ? { ...found, width: hostWidth / PX_PER_MM, height: screenHeightPx / PX_PER_MM }
+      ? {
+          ...found,
+          width: hostWidth / PX_PER_MM,
+          height: screenHeightPx / PX_PER_MM,
+          // 窄螢幕或直立：單欄
+          columns: hostWidth < 700 || screenHeightPx > hostWidth ? 1 : 2,
+        }
       : found;
   }, [printPaper, hostWidth, screenHeightPx]);
   // 螢幕版面按「列印」時，暫時改用 A4 橫式重新排版
   const paper = printOverride ? PAPER_A4 : basePaper;
   const actualSize = !printOverride && printPaper === "screen";
-  const paperKey = `${paper.value}:${Math.round(paper.width)}x${Math.round(paper.height)}`;
+  const paperKey = `${paper.value}:${Math.round(paper.width)}x${Math.round(paper.height)}x${paper.columns ?? 2}`;
   const standMode = paper.value !== "default" && layout === "lead";
   // 簡譜風格的字級用歌詞 pt 直接設定；其他排版（卡片、不重複和弦）沿用整體縮放，14pt ＝ 原大小
   const printScale = layout === "lead" ? 1 : lyricPt / PT_MIN;
@@ -556,7 +564,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   }
 
   const panelDock = !performing && printPaper !== "screen";
-  const panelVisible = performing ? performPanel : panelOpen;
+  const panelVisible = performing ? performPanel : panelDock ? panelOpen : floatPanel;
 
   return (
     <section className={`workspace workspace--overview${performing ? " is-performing" : ""}`} aria-labelledby="overview-mode-title">
@@ -579,7 +587,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
         <button
           type="button"
           className={`overview-panel-toggle${performing ? " is-perform" : ""}${panelDock ? "" : " is-float"}`}
-          onClick={() => (performing ? setPerformPanel(!performPanel) : setPanelOpen(!panelOpen))}
+          onClick={() => (performing ? setPerformPanel(!performPanel) : panelDock ? setPanelOpen(!panelOpen) : setFloatPanel(!floatPanel))}
           aria-expanded={panelVisible}
         >
           {panelVisible ? "隱藏設定" : "⚙ 顯示設定"}
@@ -767,7 +775,10 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
                     type="button"
                     className={printPaper === option.value ? "is-active" : ""}
                     aria-pressed={printPaper === option.value}
-                    onClick={() => setPrintPaper(option.value as PrintPaper)}
+                    onClick={() => {
+                      setPrintPaper(option.value as PrintPaper);
+                      setFloatPanel(false);
+                    }}
                     title={
                       option.value === "default"
                         ? "使用瀏覽器列印視窗裡的紙張設定"
