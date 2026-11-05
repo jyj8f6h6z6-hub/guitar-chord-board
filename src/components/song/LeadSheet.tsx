@@ -61,6 +61,10 @@ interface LeadSheetProps {
   legendRows?: readonly number[];
   /** 歌詞字級（pt）；旋律、和弦名稱依比例跟著變，和弦圖另外用 diagramWidth */
   lyricPt?: number;
+  /** 自己排列時，固定每列幾個和弦（0＝依欄寬自動） */
+  perRow?: number;
+  /** 固定每列個數放不下時，整列自動縮小 */
+  fitRows?: boolean;
 }
 
 /** 上下間距微調（像素，可為負）：和弦名稱、旋律、歌詞（各節之間）、列與列之間 */
@@ -245,6 +249,8 @@ export function LeadSheet({
   spacing,
   legendRows,
   lyricPt,
+  perRow = 0,
+  fitRows = false,
 }: LeadSheetProps) {
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
@@ -307,6 +313,8 @@ export function LeadSheet({
   const measureKey = useMemo(() => ({}), [song, symbols, diagramMode, diagramWidth, showMelody, large, stretch, flow, lyricPt]);
   const [measured, setMeasured] = useState<{ key: object; widths: number[]; avail: number } | null>(null);
   const [liveAvail, setLiveAvail] = useState<number | null>(null);
+  // 譜面寬度與「一列可用寬度」的差（標籤欄、內距）：量測時記下，之後只看譜面寬度
+  const availOverhead = useRef(0);
   const widths = measured && measured.key === measureKey ? measured.widths : null;
   const needMeasure = flow && widths === null && (measureWidths || !rowsProp);
 
@@ -324,6 +332,7 @@ export function LeadSheet({
 
     const measuredWidths = Array.from(container.children).map((element) => (element as HTMLElement).getBoundingClientRect().width);
     const avail = probe ? contentWidth(probe) : 0;
+    availOverhead.current = (rootRef.current?.clientWidth ?? 0) - avail;
     setMeasured({ key: measureKey, widths: measuredWidths, avail });
     setLiveAvail(avail);
   }, [needMeasure, measureKey]);
@@ -345,10 +354,9 @@ export function LeadSheet({
     }
 
     const update = () => {
-      const cells = root.querySelector<HTMLElement>(".lead-line__cells");
+      const next = root.clientWidth - availOverhead.current;
 
-      if (cells) {
-        const next = contentWidth(cells);
+      if (next > 0) {
         setLiveAvail((previous) => (previous !== null && Math.abs(previous - next) < 0.5 ? previous : next));
       }
     };
@@ -364,8 +372,27 @@ export function LeadSheet({
     }
 
     const avail = liveAvail ?? measured?.avail ?? 0;
-    return avail > 0 ? packRows(flowCells, widths, avail - 2, 0) : null;
-  }, [flow, rowsProp, widths, liveAvail, measured, flowCells]);
+    return avail > 0 ? packRows(flowCells, widths, avail - 2, perRow) : null;
+  }, [flow, rowsProp, widths, liveAvail, measured, flowCells, perRow]);
+
+  // 自己排列、固定每列個數：每個位置取最寬者相加，放不下就整列縮小（zoom）
+  const rowZoom = useMemo(() => {
+    if (!flow || rowsProp || perRow <= 0 || !fitRows || !widths || !selfRows) {
+      return 1;
+    }
+
+    const avail = liveAvail ?? measured?.avail ?? 0;
+    const columnMax: number[] = [];
+
+    selfRows.forEach((row) => {
+      row.forEach((cellIndex, position) => {
+        columnMax[position] = Math.max(columnMax[position] ?? 0, widths[cellIndex] ?? 0);
+      });
+    });
+
+    const needed = columnMax.reduce((sum, value) => sum + value, 0);
+    return needed > 0 && avail > 0 ? Math.max(0.25, Math.min(1, (avail - 2) / (needed + 4))) : 1;
+  }, [flow, rowsProp, perRow, fitRows, widths, selfRows, liveAvail, measured]);
 
   const flowRows = rowsProp ?? selfRows;
   const rowsValid = flowRows !== null && flowRows.every((row) => row.every((index) => index < flowCells.length));
@@ -584,6 +611,7 @@ export function LeadSheet({
               className={classes}
               data-line-id={song.lines[lineIndex].id}
               onClick={onLineClick ? () => onLineClick(song.lines[lineIndex].id) : undefined}
+              style={rowZoom < 1 && !rowsProp ? ({ zoom: rowZoom } as CSSProperties) : undefined}
             >
               <div className="lead-line__label">
                 {isMarked && <span className="lead-line__marker">▶ 唱到這裡</span>}
@@ -592,7 +620,14 @@ export function LeadSheet({
                 )}
               </div>
 
-              <div className="lead-line__cells">
+              <div
+                className="lead-line__cells"
+                style={
+                  perRow > 0 && !rowsProp
+                    ? ({ display: "grid", gridTemplateColumns: `repeat(${perRow}, minmax(max-content, 1fr))`, alignItems: "end" } as CSSProperties)
+                    : undefined
+                }
+              >
                 {row.map((index) => {
                   const cell = flowCells[index];
                   return renderCell(cell.lineIndex, cell.itemIndex, {

@@ -833,17 +833,17 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
                 max={COLS_MAX}
                 valueText={(value) => (value <= 1 ? "自動" : "個")}
                 onChange={(value) => updateSettings({ printCols: value <= 1 ? 0 : value })}
-                hint="最左邊（1）＝自動。固定後每欄等寬、小節線上下對齊（只影響列印）"
+                hint="最左邊（1）＝自動。固定後每欄等寬、小節線上下對齊"
               />
 
-              {standMode && printCols > 0 && (
+              {layout === "lead" && printCols > 0 && (
                 <div className="segmented-control" role="group" aria-label="整行不換排">
                   <button
                     type="button"
                     className={printFit ? "is-active" : ""}
                     aria-pressed={printFit}
                     onClick={() => setPrintFit(!printFit)}
-                    title="列印時自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
+                    title="自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
                   >
                     整行不換排（自動縮小）
                   </button>
@@ -902,6 +902,8 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               rows={standMode ? standRows?.rows : undefined}
               legendRows={standMode ? standRows?.legendRows : undefined}
               measureWidths={standMode}
+              perRow={standMode ? 0 : printCols}
+              fitRows={printFit}
               onFlowMetrics={standMode ? setFlowMetrics : undefined}
             />
           ) : layout === "cards" ? (
