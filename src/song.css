@@ -2620,3 +2620,14 @@ body.is-performing {
 .overview-panel .segmented-control button {
   white-space: nowrap;
 }
+
+/* 1.4.0-exp.16：總覽頁整頁拉滿視窗寬度（標題列、步驟列、歌曲列、設定面板與歌譜） */
+.app-shell.app-shell--wide {
+  width: calc(100% - 32px);
+}
+
+@media (max-width: 600px) {
+  .app-shell.app-shell--wide {
+    width: calc(100% - 22px);
+  }
+}

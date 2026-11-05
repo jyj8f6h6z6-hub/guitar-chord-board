@@ -79,7 +79,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${mode === "overview" ? " app-shell--wide" : ""}`}>
       <header className="site-header">
         <a
           className="brand"
