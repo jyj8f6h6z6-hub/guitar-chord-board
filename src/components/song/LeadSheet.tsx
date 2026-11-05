@@ -7,7 +7,8 @@ import { buildFlowCells, packRows } from "../../services/flow";
 import type { FlowCell } from "../../services/flow";
 import { effectiveBarIds, effectiveSections, itemBeats, itemCapacity } from "../../services/songModel";
 import type { Song, SongItem } from "../../types/song";
-import { ChordDiagram } from "../chord/ChordDiagram";
+import { ChordDiagram, DEFAULT_DIAGRAM_STYLE } from "../chord/ChordDiagram";
+import type { DiagramStyle } from "../chord/ChordDiagram";
 import { ChordName } from "../chord/ChordName";
 
 export type DiagramMode = "legend" | "all" | "off";
@@ -37,6 +38,8 @@ interface LeadSheetProps {
   diagramMode: DiagramMode;
   /** 和弦圖寬度（像素） */
   diagramWidth?: number;
+  /** 和弦圖樣式（格數數字、線條、圓點） */
+  diagramStyle?: DiagramStyle;
   /** 演奏模式：放大字體 */
   large?: boolean;
   /** 顯示簡譜旋律（預設顯示；歌曲沒有旋律時沒有影響） */
@@ -115,7 +118,7 @@ interface DiagramEntry {
   shapeId?: string;
 }
 
-function DiagramFigure({ entry, width }: { entry: DiagramEntry; width: number }) {
+function DiagramFigure({ entry, width, diagramStyle }: { entry: DiagramEntry; width: number; diagramStyle: DiagramStyle }) {
   const shapes = findChordShapes(entry.symbol);
   const shape = shapes.find((candidate) => candidate.id === entry.shapeId) ?? shapes[0];
 
@@ -125,7 +128,7 @@ function DiagramFigure({ entry, width }: { entry: DiagramEntry; width: number })
 
   return (
     <div className="lead-cell__diagram">
-      <ChordDiagram shape={shape} compact displaySymbol={entry.symbol} width={width} />
+      <ChordDiagram shape={shape} compact displaySymbol={entry.symbol} width={width} diagramStyle={diagramStyle} />
     </div>
   );
 }
@@ -236,6 +239,7 @@ export function LeadSheet({
   symbols,
   diagramMode,
   diagramWidth = 72,
+  diagramStyle = DEFAULT_DIAGRAM_STYLE,
   large = false,
   showMelody = true,
   markedLineId = null,
@@ -443,7 +447,7 @@ export function LeadSheet({
         >
           {volta && <div className={`lead-cell__volta${volta.first ? " is-first" : ""}`}>{volta.first ? volta.label : ""}</div>}
 
-          {showDiagram && <DiagramFigure entry={entry} width={diagramWidth} />}
+          {showDiagram && <DiagramFigure entry={entry} width={diagramWidth} diagramStyle={diagramStyle} />}
 
           <div className={topClasses}>
             <div className="lead-cell__chordrow">
@@ -505,7 +509,7 @@ export function LeadSheet({
     <div className="lead-legend" aria-label="本曲和弦按法" key={key}>
       {entries.map((entry) => (
         <figure className="lead-legend__item" key={entry.key}>
-          <DiagramFigure entry={entry} width={diagramWidth} />
+          <DiagramFigure entry={entry} width={diagramWidth} diagramStyle={diagramStyle} />
           <figcaption className="lead-cell__chord">
             <ChordName symbol={entry.symbol} />
           </figcaption>

@@ -10,6 +10,10 @@ export interface OverviewSettings {
   spLyric: number;
   spRow: number;
   diagramMode: DiagramMode;
+  /** 格數數字高度（％格高）、線條粗細（％）、圓點大小（％） */
+  fretPct: number;
+  linePct: number;
+  dotPct: number;
 }
 
 export const PT_MIN = 14;
@@ -17,6 +21,9 @@ export const PT_MAX = 36;
 export const DIAGRAM_MIN = 60;
 export const DIAGRAM_MAX = 400;
 export const COLS_MAX = 12;
+export const FRET_PCT = { min: 100, max: 300 } as const;
+export const LINE_PCT = { min: 50, max: 300 } as const;
+export const DOT_PCT = { min: 50, max: 180 } as const;
 export const SPACING_RANGE = { chord: [-6, 24], melody: [-6, 24], lyric: [-6, 24], row: [0, 40] } as const;
 
 export const DEFAULT_OVERVIEW_SETTINGS: OverviewSettings = {
@@ -28,6 +35,9 @@ export const DEFAULT_OVERVIEW_SETTINGS: OverviewSettings = {
   spLyric: 0,
   spRow: 0,
   diagramMode: "legend",
+  fretPct: 200,
+  linePct: 100,
+  dotPct: 100,
 };
 
 const MAP_KEY = "guitar-chord-board:song-settings:v1";
@@ -63,6 +73,9 @@ function sanitize(raw: unknown): OverviewSettings | null {
     spMelody: clamp(source.spMelody, SPACING_RANGE.melody[0], SPACING_RANGE.melody[1], 0),
     spLyric: clamp(source.spLyric, SPACING_RANGE.lyric[0], SPACING_RANGE.lyric[1], 0),
     spRow: clamp(source.spRow, SPACING_RANGE.row[0], SPACING_RANGE.row[1], 0),
+    fretPct: clamp(source.fretPct, FRET_PCT.min, FRET_PCT.max, defaults.fretPct),
+    linePct: clamp(source.linePct, LINE_PCT.min, LINE_PCT.max, defaults.linePct),
+    dotPct: clamp(source.dotPct, DOT_PCT.min, DOT_PCT.max, defaults.dotPct),
     // 舊版的「首次出現小圖」已取消，一律改成上方圖例
     diagramMode: DIAGRAM_MODES.includes(source.diagramMode as DiagramMode)
       ? (source.diagramMode as DiagramMode)

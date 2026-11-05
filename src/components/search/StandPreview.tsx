@@ -3,6 +3,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { Song } from "../../types/song";
 import type { DiagramMode, Spacing } from "../song/LeadSheet";
 import { LeadSheet } from "../song/LeadSheet";
+import type { DiagramStyle } from "../chord/ChordDiagram";
 
 export interface PaperSpec {
   value: string;
@@ -25,6 +26,7 @@ interface StandPreviewProps {
   symbols?: Readonly<Record<string, string>>;
   diagramMode: DiagramMode;
   diagramWidth: number;
+  diagramStyle: DiagramStyle;
   showMelody: boolean;
   paper: PaperSpec;
   /** 列印字級縮放（只有固定每行個數時會小於 1） */
@@ -60,6 +62,7 @@ export function StandPreview({
   symbols,
   diagramMode,
   diagramWidth,
+  diagramStyle,
   showMelody,
   paper,
   scale,
@@ -242,6 +245,7 @@ export function StandPreview({
                       symbols={symbols}
                       diagramMode={diagramMode}
                       diagramWidth={diagramWidth}
+                      diagramStyle={diagramStyle}
                       showMelody={showMelody}
                       part={{ ...part, legend: false }}
                       flow

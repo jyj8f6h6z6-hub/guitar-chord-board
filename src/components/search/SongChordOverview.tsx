@@ -24,6 +24,7 @@ import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import type { DiagramMode, FlowMetrics, Spacing } from "../song/LeadSheet";
 import { DIAGRAM_MODE_LABELS, LeadSheet } from "../song/LeadSheet";
+import { DiagramStyleDialog } from "./DiagramStyleDialog";
 import { StandPreview } from "./StandPreview";
 import type { PaperSpec, ViewMode } from "./StandPreview";
 import { PtSelect, StepperRange } from "./OverviewControls";
@@ -288,6 +289,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const [performing, setPerforming] = useState(false);
   const [performPanel, setPerformPanel] = useState(false);
   const [floatPanel, setFloatPanel] = useState(false);
+  const [styleDialog, setStyleDialog] = useState(false);
   // 觸控裝置（平板）：只有「預設」「螢幕」；電腦：只有「預設」「A3」「A4」
   const [isTablet, setIsTablet] = useState(() => window.matchMedia("(pointer: coarse)").matches);
   useEffect(() => {
@@ -314,6 +316,10 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   };
 
   const { lyricPt, diagramPx, printCols, diagramMode } = settings;
+  const diagramStyle = useMemo(
+    () => ({ fretPct: settings.fretPct, linePct: settings.linePct, dotPct: settings.dotPct }),
+    [settings.fretPct, settings.linePct, settings.dotPct],
+  );
   const spacing = useMemo<Spacing>(
     () => ({ chord: settings.spChord, melody: settings.spMelody, lyric: settings.spLyric, row: settings.spRow }),
     [settings.spChord, settings.spMelody, settings.spLyric, settings.spRow],
@@ -768,6 +774,12 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
                   onChange={(value) => updateSettings({ diagramPx: value })}
                 />
               )}
+
+              {diagramMode !== "off" && (
+                <button type="button" className="ghost-button" onClick={() => setStyleDialog(true)}>
+                  和弦圖樣式…
+                </button>
+              )}
             </div>
           )}
 
@@ -894,6 +906,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               symbols={symbolById}
               diagramMode={diagramMode}
               diagramWidth={diagramPx}
+              diagramStyle={diagramStyle}
               showMelody={showMelody}
               stretch
               flow
@@ -957,6 +970,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               symbols={symbolById}
               diagramMode={diagramMode}
               diagramWidth={diagramPx}
+              diagramStyle={diagramStyle}
               showMelody={showMelody}
               paper={paper}
               scale={standPlan.scale}
@@ -975,6 +989,16 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
           )}
         </div>
       </div>
+      {styleDialog && (
+        <DiagramStyleDialog
+          initial={{ diagramPx, fretPct: settings.fretPct, linePct: settings.linePct, dotPct: settings.dotPct }}
+          onClose={() => setStyleDialog(false)}
+          onApply={(values) => {
+            updateSettings(values);
+            setStyleDialog(false);
+          }}
+        />
+      )}
     </section>
   );
 }

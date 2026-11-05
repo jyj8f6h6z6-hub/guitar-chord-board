@@ -2631,3 +2631,100 @@ body.is-performing {
     width: calc(100% - 22px);
   }
 }
+
+/* 1.4.0-exp.17：和弦圖樣式視窗與格數數字 */
+.diagram-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.diagram-dialog__panel {
+  display: grid;
+  gap: 14px;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 32px);
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.diagram-dialog__panel h3 {
+  margin: 0;
+}
+
+.diagram-dialog__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.diagram-dialog__samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  justify-content: center;
+  padding: 18px 12px 12px 60px;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.diagram-dialog__sample {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  justify-items: center;
+}
+
+.diagram-dialog__sample figcaption {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.diagram-dialog__controls {
+  display: grid;
+  gap: 12px;
+}
+
+.diagram-dialog__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.diagram-dialog__spacer {
+  flex: 1;
+}
+
+@media (max-width: 800px) {
+  .diagram-dialog__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.diagram-base-fret--styled {
+  fill: var(--accent-strong);
+  font-weight: 900;
+}
+
+
+.diagram-dialog__note {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* 列印時外框維持 100%（拉滿只用在螢幕；這條要比上面的 wide 規則優先） */
+@media print {
+  .app-shell.app-shell--wide {
+    width: 100%;
+  }
+}
