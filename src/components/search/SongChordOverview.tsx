@@ -660,7 +660,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange, onP
           diagramMode={diagramMode}
           diagramWidth={DIAGRAM_SIZES[diagramSize].width}
           showMelody={showMelody}
-          stretch={standMode}
+          stretch
         />
       ) : layout === "cards" ? (
         <div className="cards-by-line">
