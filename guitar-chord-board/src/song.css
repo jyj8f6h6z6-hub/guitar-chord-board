@@ -1798,13 +1798,6 @@ body.is-performing {
   .lead-sheet {
     --lead-edge: calc(6px + 3.4em + 4px);
   }
-
-  /* 固定每行和弦數：每欄等寬並填滿整行，小節線上下對齊 */
-  .print-scale-box[data-print-cols] .lead-line__cells {
-    display: grid;
-    grid-template-columns: repeat(var(--print-cols), minmax(max-content, 1fr));
-    align-items: end;
-  }
 }
 
 @media print {
@@ -1853,5 +1846,1032 @@ body.is-performing {
 
 .verse-fill__cell.is-bad small {
   color: #e5484d;
+  font-weight: 700;
+}
+
+/* 1.4.0-exp.2：譜架模式（A3／A4 橫式，左右兩欄） */
+@media print {
+  /* zoom 放在每一行而不是兩欄的外框，這樣最後一頁的兩欄才能平均分配 */
+  .print-scale-box[data-paper] {
+    zoom: 1;
+    column-count: 2;
+    column-gap: 12mm;
+    column-fill: balance;
+    column-rule: 0.3mm solid #bbb;
+  }
+
+  .print-scale-box[data-paper] .lead-sheet {
+    display: block;
+  }
+
+  .print-scale-box[data-paper] .lead-sheet > * {
+    zoom: var(--print-scale, 1);
+    break-inside: avoid;
+    margin-bottom: 6px;
+  }
+}
+
+/* 1.4.0-exp.5：譜架預覽（螢幕上的橫向紙張，左右兩欄） */
+.print-scale-box.is-stand-hidden {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.stand-preview__note {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stand-preview__pages {
+  display: grid;
+  gap: 18px;
+  justify-content: start;
+}
+
+.stand-page {
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #f2f2f2;
+  --text: #111111;
+  --muted: #444444;
+  --line: #bbbbbb;
+  --accent: #111111;
+  --accent-strong: #111111;
+  --bar-color: #111111;
+  --mel-color: #111111;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.stand-page__header {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #111111;
+}
+
+.stand-page__header h1 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+  color: #111111;
+}
+
+.stand-page__header p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.stand-page__cols {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  min-height: 0;
+}
+
+.stand-page__cols::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0.3mm;
+  background: #bbbbbb;
+}
+
+.stand-page__number {
+  position: absolute;
+  right: 6mm;
+  bottom: 3mm;
+  color: #888888;
+  font-size: 0.7rem;
+}
+
+.stand-col {
+  min-width: 0;
+}
+
+.stand-col .lead-sheet {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: #ffffff;
+  --lead-edge: calc(6px + 3.4em + 4px);
+}
+
+.stand-col .lead-sheet > * {
+  zoom: var(--print-scale, 1);
+  margin-bottom: 6px;
+  break-inside: avoid;
+}
+
+.stand-col .lead-line {
+  grid-template-columns: 3.4em 1fr;
+  gap: 4px;
+  padding: 4px 2px;
+  border-left-color: transparent;
+  background: transparent !important;
+}
+
+.stand-col .lead-line.is-chorus {
+  border-left: 4px solid #111111;
+}
+
+
+.stand-col .lead-cell__chord,
+.stand-col .lead-cell__lyric,
+.stand-col .lead-cell__volta,
+.stand-col .verse-no,
+.stand-col .mel-col.is-hold .mel-num {
+  color: #111111;
+}
+
+.stand-col .lead-bar,
+.stand-col .lead-cell__chordrow.has-bar {
+  border-right-color: #111111;
+}
+
+.stand-col .lead-legend {
+  border-bottom-color: #111111;
+}
+
+.stand-col .section-badge {
+  background: #ffffff !important;
+  border: 1.5px solid #111111;
+  color: #111111 !important;
+}
+
+.stand-col .section-badge--chorus {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+@media print {
+  .stand-preview {
+    display: none !important;
+  }
+
+  .print-scale-box.is-stand-hidden {
+    position: static !important;
+    left: auto !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* 1.4.0-exp.6：譜架模式的分散對齊（每一行和弦拉滿欄寬） */
+.lead-sheet--stretch .lead-cell__top,
+.lead-sheet--stretch .lead-cell__lyrics,
+.lead-sheet--stretch .lead-cell__lyric.is-aligned {
+  align-self: stretch;
+}
+
+.lead-sheet--stretch .lead-cell__lyrics {
+  align-items: stretch;
+  padding-right: 0.5em;
+}
+
+/* 1.4.0-exp.10：連續接排（小節折行、一列放整數個小節） */
+.lead-sheet--flow {
+  position: relative;
+}
+
+.lead-sheet--flow .lead-line__cells {
+  flex-wrap: wrap;
+}
+
+.lead-flow-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lead-flow-probe {
+  height: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* 1.4.0-exp.10：上下間距微調（--sp-* 由 LeadSheet 設定，預設 0） */
+.lead-sheet {
+  --sp-chord: 0px;
+  --sp-melody: 0px;
+  --sp-lyric: 0px;
+  --sp-row: 0px;
+}
+
+.lead-cell__chordrow {
+  margin-block: var(--sp-chord);
+}
+
+.mel-row {
+  margin-block: var(--sp-melody);
+}
+
+.lead-cell__lyrics {
+  row-gap: var(--sp-lyric);
+}
+
+.lead-line {
+  padding-block: calc(8px + var(--sp-row));
+}
+
+@media print {
+  .lead-line {
+    padding-block: calc(4px + var(--sp-row));
+  }
+}
+
+.stand-col .lead-line {
+  padding-block: calc(4px + var(--sp-row));
+}
+
+.spacing-tune {
+  flex: 1 1 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+
+.spacing-tune summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.spacing-tune__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 18px;
+  margin-top: 8px;
+}
+
+.spacing-tune label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.spacing-tune input[type="range"] {
+  width: 100%;
+}
+
+@media print {
+  .spacing-tune {
+    display: none;
+  }
+}
+
+/* 譜架列印：外層頁面上方的留白（34px）會吃掉第一頁高度，列印時去掉，版面才和預覽一致 */
+@media print {
+  .workspace--overview:has(.print-scale-box[data-paper]) {
+    padding-top: 0 !important;
+  }
+}
+
+/* 1.4.0-exp.11：滑桿與 pt 輸入 */
+.slider-control {
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.slider-control input[type="range"] {
+  width: 100%;
+}
+
+.pt-input {
+  width: 5em;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  color: inherit;
+  font: inherit;
+}
+
+@media print {
+  .slider-control {
+    display: none;
+  }
+}
+
+/* ================= 1.4.0-exp.12：總覽重做（左側設定面板、符合螢幕、螢幕版面、演奏） ================= */
+.overview-layout {
+  position: relative;
+  display: block;
+}
+
+.overview-layout.has-dock {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.overview-layout.has-dock > .overview-panel-toggle {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.overview-layout.has-dock > .overview-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.overview-layout.has-dock > .overview-main {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.overview-panel-toggle,
+.overview-perform-exit {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.overview-panel-toggle {
+  margin-bottom: 10px;
+}
+
+.overview-layout.has-dock > .overview-panel-toggle {
+  margin-bottom: 0;
+}
+
+.overview-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.overview-panel[hidden] {
+  display: none;
+}
+
+.overview-panel--dock {
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+}
+
+.overview-panel--float {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  z-index: 1100;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 72px);
+  overflow: auto;
+  background: rgba(20, 22, 30, 0.94);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.overview-panel-toggle.is-float,
+.overview-panel-toggle.is-perform {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1150;
+  margin: 0;
+  background: rgba(20, 22, 30, 0.85);
+}
+
+.overview-perform-exit {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1150;
+  background: rgba(20, 22, 30, 0.85);
+}
+
+.overview-panel__section {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview-panel__section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.overview-panel__section > h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.overview-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.overview-panel .segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.overview-panel .overview-transpose-panel {
+  margin: 0;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+}
+
+.overview-panel .overview-transpose-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.overview-panel .overview-transpose-arrow {
+  justify-self: center;
+}
+
+.overview-panel .spacing-tune {
+  padding: 6px 8px;
+}
+
+.stepper-range {
+  display: grid;
+  gap: 4px;
+}
+
+.stepper-range__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.stepper-range__box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper-range__box button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.stepper-range__box button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stepper-range__box input,
+.stepper-range__box select {
+  width: 4.6em;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.stepper-range__unit {
+  min-width: 2.2em;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.stepper-range > input[type="range"] {
+  width: 100%;
+}
+
+.overview-main {
+  min-width: 0;
+}
+
+.stand-preview__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.stand-preview__bar .stand-preview__note {
+  margin: 0;
+}
+
+.stand-preview__pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.stand-preview__pager button,
+.stand-preview__perform-pager button {
+  width: 40px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stand-preview__pager button:disabled,
+.stand-preview__perform-pager button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stand-preview__pages {
+  justify-content: center;
+}
+
+.stand-preview.is-actual .stand-preview__pages {
+  gap: 0;
+}
+
+.stand-preview__perform-pager {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  z-index: 1050;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 22, 30, 0.7);
+  color: #ffffff;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.stand-preview__perform-pager button {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 演奏：只剩譜，佔滿整個畫面 */
+.workspace--overview.is-performing .workspace__intro,
+.workspace--overview.is-performing .song-overview-summary {
+  display: none;
+}
+
+.workspace--overview.is-performing .overview-main {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #d8d8dd;
+}
+
+.stand-preview.is-performing .stand-page {
+  box-shadow: none;
+}
+
+@media (max-width: 1000px) {
+  .overview-layout.has-dock {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .overview-layout.has-dock > .overview-panel,
+  .overview-layout.has-dock > .overview-main {
+    grid-column: 1;
+  }
+
+  .overview-layout.has-dock > .overview-panel {
+    grid-row: 2;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    max-height: 45vh;
+  }
+
+  .overview-layout.has-dock > .overview-main {
+    grid-row: 3;
+  }
+}
+
+@media print {
+  .overview-panel,
+  .overview-panel-toggle,
+  .overview-perform-exit,
+  .stand-preview__perform-pager,
+  .stand-preview__bar {
+    display: none !important;
+  }
+
+  .overview-layout,
+  .overview-layout.has-dock {
+    display: block !important;
+  }
+
+  .workspace--overview.is-performing .overview-main {
+    position: static !important;
+    overflow: visible !important;
+  }
+}
+
+/* 設定面板內的移調區：縮小成緊湊版 */
+.overview-panel .overview-transpose-panel__heading {
+  margin-bottom: 8px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.overview-panel .overview-transpose-panel__heading h3 {
+  font-size: 1rem;
+}
+
+.overview-panel .overview-transpose-controls {
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+
+.overview-panel .overview-key-field select {
+  aspect-ratio: auto;
+  min-height: 38px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2, rgba(16, 18, 26, 0.78));
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.overview-panel .overview-transpose-arrow {
+  padding: 0 0 8px;
+  font-size: 1.1rem;
+  align-self: end;
+}
+
+.overview-panel .overview-transpose-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overview-panel .overview-transpose-actions .primary-button,
+.overview-panel .overview-transpose-actions .secondary-button {
+  width: auto;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+/* 螢幕／演奏：按鈕放在畫面下緣，不蓋住標題與譜 */
+.overview-panel-toggle.is-float,
+.overview-panel-toggle.is-perform {
+  top: auto;
+  bottom: 10px;
+}
+
+.overview-panel--float {
+  top: auto;
+  bottom: 56px;
+  max-height: calc(100vh - 72px);
+}
+
+/* 1.4.0-exp.13：單欄螢幕版面、浮動面板不擋翻頁列 */
+.stand-page__cols.is-single::before {
+  display: none;
+}
+
+.overview-panel--float {
+  max-height: min(70vh, calc(100vh - 140px));
+}
+
+@media (max-width: 700px) {
+  .overview-panel--float {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+.overview-panel .segmented-control button {
+  white-space: nowrap;
+}
+
+/* 1.4.0-exp.16：總覽頁整頁拉滿視窗寬度（標題列、步驟列、歌曲列、設定面板與歌譜） */
+.app-shell.app-shell--wide {
+  width: calc(100% - 32px);
+}
+
+@media (max-width: 600px) {
+  .app-shell.app-shell--wide {
+    width: calc(100% - 22px);
+  }
+}
+
+/* 1.4.0-exp.17：和弦圖樣式視窗與格數數字 */
+.diagram-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.diagram-dialog__panel {
+  display: grid;
+  gap: 14px;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 32px);
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.diagram-dialog__panel h3 {
+  margin: 0;
+}
+
+.diagram-dialog__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.diagram-dialog__samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  justify-content: center;
+  padding: 18px 12px 12px 60px;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.diagram-dialog__sample {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  justify-items: center;
+}
+
+.diagram-dialog__sample figcaption {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.diagram-dialog__controls {
+  display: grid;
+  gap: 12px;
+}
+
+.diagram-dialog__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.diagram-dialog__spacer {
+  flex: 1;
+}
+
+@media (max-width: 800px) {
+  .diagram-dialog__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.diagram-base-fret--styled {
+  fill: var(--accent-strong);
+  font-weight: 900;
+}
+
+
+.diagram-dialog__note {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* 列印時外框維持 100%（拉滿只用在螢幕；這條要比上面的 wide 規則優先） */
+@media print {
+  .app-shell.app-shell--wide {
+    width: 100%;
+  }
+}
+
+/* 1.4.0-exp.18：本曲和弦與待選區可釘選在最上方（精簡版） */
+.song-pinbar {
+  display: contents;
+}
+
+.song-pinbar__toggle {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.song-pinbar.is-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  max-height: 46vh;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg, #10121a);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.song-pinbar.is-pinned .song-pinbar__toggle {
+  grid-row: 1;
+}
+
+.song-pinbar.is-pinned .song-arranger__section {
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.song-pinbar.is-pinned .song-arranger__heading {
+  margin-bottom: 6px;
+}
+
+/* 精簡：標題與說明文字不顯示，只留操作 */
+.song-pinbar.is-pinned .song-arranger__heading > div:first-child,
+.song-pinbar.is-pinned .song-arranger__heading > span,
+.song-pinbar.is-pinned .palette-heading-actions > span {
+  display: none;
+}
+
+.song-pinbar.is-pinned .song-palette__list {
+  margin: 0;
+  gap: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord-list {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.song-pinbar.is-pinned .song-palette__builder {
+  margin-top: 8px;
+}
+
+.song-palette__builder-toggle {
+  margin-top: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(44px, 1fr));
+  gap: 6px;
+}
+
+.song-pinbar.is-pinned .palette-chord {
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+}
+
+.song-pinbar.is-pinned .song-palette__chip .palette-chord {
+  min-width: 56px;
+}
+
+.song-pinbar.is-pinned .palette-heading-actions {
+  width: 100%;
+}
+
+.song-pinbar.is-pinned .palette-accidental-control button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+@media (min-width: 1000px) {
+  .song-pinbar.is-pinned {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .song-pinbar.is-pinned .song-pinbar__toggle {
+    grid-column: 1 / -1;
+  }
+}
+
+.song-pinbar.is-pinned .song-palette__chip .palette-chord {
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+/* ================= 1.4.0-exp.19：每行小節數、歌本樣式、標題資訊 ================= */
+
+/* 第 2 節以後的歌詞：印在譜下方，兩句並排 */
+.lead-verse__texts {
+  display: grid;
+  grid-template-columns: 2.4em 1fr 1fr;
+  gap: 2px 1.2em;
+  align-items: baseline;
+  padding-left: var(--lead-gutter);
+  letter-spacing: 0.03em;
+}
+
+.lead-verse__no {
+  color: var(--muted);
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+.stand-col .lead-verse__no,
+.stand-col .lead-verse__text {
+  color: #111111;
+}
+
+@media print {
+  .lead-verse__no {
+    color: #111111;
+  }
+}
+
+/* 標題：置中粗體；調號靠左、拍號靠右；頁碼在頁面下方中間 */
+.print-header h1,
+.stand-page__header h1 {
+  text-align: center;
+  font-weight: 800;
+}
+
+.print-header__info,
+.stand-page__info {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stand-page__number {
+  right: 0;
+  left: 0;
+  text-align: center;
+}
+
+.overview-panel__note {
+  margin: 4px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.85rem;
   font-weight: 700;
 }
