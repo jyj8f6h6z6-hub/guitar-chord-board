@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { findChordShapes } from "../../data/chordShapes";
 import { MELODY_BEAT_EM, assignLyric, layoutLineMelody } from "../../services/melody";
 import type { LineMelodyLayout, MelodyColumn } from "../../services/melody";
-import { buildFlowCells, packRows } from "../../services/flow";
+import { buildFlowCells, packBars } from "../../services/flow";
 import type { FlowCell } from "../../services/flow";
 import { effectiveBarIds, effectiveSections, itemBeats, itemCapacity } from "../../services/songModel";
 import type { Song, SongItem } from "../../types/song";
@@ -64,10 +64,12 @@ interface LeadSheetProps {
   legendRows?: readonly number[];
   /** 歌詞字級（pt）；旋律、和弦名稱依比例跟著變，和弦圖另外用 diagramWidth */
   lyricPt?: number;
-  /** 自己排列時，固定每列幾個和弦（0＝依欄寬自動） */
+  /** 自己排列時，每列幾個小節（0＝依欄寬自動）；放不下會自動減少 */
   perRow?: number;
-  /** 固定每列個數放不下時，整列自動縮小 */
-  fitRows?: boolean;
+  /** 自己排列時，實際採用的每列小節數（0＝自動）通知外部 */
+  onBarsUsed?: (used: number) => void;
+  /** 多節歌詞：stacked＝每節疊在音符下方；songbook＝只有第一節在音符下方，其餘各節印在譜下方（只在連續接排有效） */
+  verseStyle?: "stacked" | "songbook";
 }
 
 /** 上下間距微調（像素，可為負）：和弦名稱、旋律、歌詞（各節之間）、列與列之間 */
@@ -245,7 +247,7 @@ export function LeadSheet({
   markedLineId = null,
   onLineClick,
   part,
-  stretch = false,
+  stretch: stretchProp = false,
   flow = false,
   rows: rowsProp,
   onFlowMetrics,
@@ -254,8 +256,12 @@ export function LeadSheet({
   legendRows,
   lyricPt,
   perRow = 0,
-  fitRows = false,
+  onBarsUsed,
+  verseStyle = "stacked",
 }: LeadSheetProps) {
+  // 連續接排：每列填滿整行寬度，小節依內容比例分配寬度
+  const stretch = stretchProp || flow;
+  const songbook = flow && verseStyle === "songbook";
   const sections = effectiveSections(song);
   const bars = useMemo(() => effectiveBarIds(song), [song]);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -370,33 +376,22 @@ export function LeadSheet({
     return () => observer.disconnect();
   }, [flow, rowsProp, needMeasure]);
 
-  const selfRows = useMemo(() => {
+  const selfPacked = useMemo(() => {
     if (!flow || rowsProp || !widths) {
       return null;
     }
 
     const avail = liveAvail ?? measured?.avail ?? 0;
-    return avail > 0 ? packRows(flowCells, widths, avail - 2, perRow) : null;
+    return avail > 0 ? packBars(flowCells, widths, avail - 2, perRow) : null;
   }, [flow, rowsProp, widths, liveAvail, measured, flowCells, perRow]);
+  const selfRows = selfPacked?.rows ?? null;
+  const selfUsed = selfPacked?.used ?? 0;
+  const barsUsedCallback = useRef(onBarsUsed);
+  barsUsedCallback.current = onBarsUsed;
 
-  // 自己排列、固定每列個數：每個位置取最寬者相加，放不下就整列縮小（zoom）
-  const rowZoom = useMemo(() => {
-    if (!flow || rowsProp || perRow <= 0 || !fitRows || !widths || !selfRows) {
-      return 1;
-    }
-
-    const avail = liveAvail ?? measured?.avail ?? 0;
-    const columnMax: number[] = [];
-
-    selfRows.forEach((row) => {
-      row.forEach((cellIndex, position) => {
-        columnMax[position] = Math.max(columnMax[position] ?? 0, widths[cellIndex] ?? 0);
-      });
-    });
-
-    const needed = columnMax.reduce((sum, value) => sum + value, 0);
-    return needed > 0 && avail > 0 ? Math.max(0.25, Math.min(1, (avail - 2) / (needed + 4))) : 1;
-  }, [flow, rowsProp, perRow, fitRows, widths, selfRows, liveAvail, measured]);
+  useEffect(() => {
+    barsUsedCallback.current?.(selfUsed);
+  }, [selfUsed]);
 
   const flowRows = rowsProp ?? selfRows;
   const rowsValid = flowRows !== null && flowRows.every((row) => row.every((index) => index < flowCells.length));
@@ -518,6 +513,34 @@ export function LeadSheet({
     </div>
   );
 
+  // 歌本樣式：第 2 節以後的歌詞印在譜的下方，兩句並排（沒有和弦、旋律）
+  const verseBlocks = useMemo(() => {
+    if (!songbook) {
+      return [] as { verse: number; texts: string[]; first: boolean }[];
+    }
+
+    const total = song.lines.reduce((max, line) => Math.max(max, verseRows(line)), 0);
+    const result: { verse: number; texts: string[]; first: boolean }[] = [];
+
+    for (let verse = 1; verse < total; verse += 1) {
+      const phrases = song.lines
+        .map((line) =>
+          line.items
+            .map((item) => (item.lyric || "").split("\n")[verse] ?? "")
+            .join("")
+            .replace(/\s+/g, " ")
+            .trim(),
+        )
+        .filter(Boolean);
+
+      for (let from = 0; from < phrases.length; from += 2) {
+        result.push({ verse, texts: phrases.slice(from, from + 2), first: from === 0 });
+      }
+    }
+
+    return result;
+  }, [songbook, song]);
+
   const showLegend = diagramMode === "legend" && legend.length > 0;
   const legendBlock = showLegend && (!part || part.legend) && renderLegend(legend, "legend");
 
@@ -556,9 +579,14 @@ export function LeadSheet({
 
   if (flow) {
     const rowList = rowsValid && flowRows && !(needMeasure) ? flowRows : [];
-    const blocks: ({ kind: "legend"; entries: DiagramEntry[] } | { kind: "row"; row: readonly number[] })[] = [
+    const blocks: (
+      | { kind: "legend"; entries: DiagramEntry[] }
+      | { kind: "row"; row: readonly number[] }
+      | { kind: "verses"; verse: number; texts: string[]; first: boolean }
+    )[] = [
       ...legendChunks.map((entries) => ({ kind: "legend" as const, entries })),
       ...rowList.map((row) => ({ kind: "row" as const, row })),
+      ...(rowList.length > 0 ? verseBlocks.map((entry) => ({ kind: "verses" as const, ...entry })) : []),
     ];
     const visible = part ? blocks.slice(part.start, part.end) : blocks;
 
@@ -570,7 +598,7 @@ export function LeadSheet({
             <div className="lead-flow-measure" ref={measureRef} aria-hidden="true">
               {flowCells.map((cell) =>
                 renderCell(cell.lineIndex, cell.itemIndex, {
-                  rowCount: Math.max(lineInfo[cell.lineIndex].verses, 1),
+                  rowCount: songbook ? 1 : Math.max(lineInfo[cell.lineIndex].verses, 1),
                   flags: lineInfo[cell.lineIndex].melody,
                   showVerseNo: false,
                 }),
@@ -588,6 +616,22 @@ export function LeadSheet({
             return renderLegend(block.entries, `legend-${(part?.start ?? 0) + rowIndex}`);
           }
 
+          if (block.kind === "verses") {
+            return (
+              <div className="lead-line lead-verse" key={`verse-${block.verse}-${(part?.start ?? 0) + rowIndex}`}>
+                <div className="lead-line__label" />
+                <div className="lead-verse__texts">
+                  <span className="lead-verse__no">{block.first ? (VERSE_NUMBERS[block.verse] ?? block.verse + 1) : ""}</span>
+                  {block.texts.map((text, textIndex) => (
+                    <span className="lead-verse__text" key={textIndex}>
+                      {text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           const row = block.row;
           const first = flowCells[row[0]];
           const lineIndex = first.lineIndex;
@@ -596,7 +640,7 @@ export function LeadSheet({
           const startsLine = first.itemIndex === 0;
           const lineIndexes = Array.from(new Set(row.map((index) => flowCells[index].lineIndex)));
           const isMarked = markedLineId !== null && lineIndexes.some((index) => song.lines[index].id === markedLineId);
-          const rowCount = Math.max(1, ...lineIndexes.map((index) => lineInfo[index].verses));
+          const rowCount = songbook ? 1 : Math.max(1, ...lineIndexes.map((index) => lineInfo[index].verses));
           const flags = mergeFlags(lineIndexes.map((index) => lineInfo[index].melody));
           const numbered = startsLine && lineInfo[lineIndex].numbered;
           const classes = [
@@ -615,23 +659,15 @@ export function LeadSheet({
               className={classes}
               data-line-id={song.lines[lineIndex].id}
               onClick={onLineClick ? () => onLineClick(song.lines[lineIndex].id) : undefined}
-              style={rowZoom < 1 && !rowsProp ? ({ zoom: rowZoom } as CSSProperties) : undefined}
             >
               <div className="lead-line__label">
                 {isMarked && <span className="lead-line__marker">▶ 唱到這裡</span>}
-                {startsLine && section.badge && (
+                {startsLine && section.badge && section.kind !== "verse" && section.badge !== "主歌" && (
                   <span className={`section-badge${isChorus ? " section-badge--chorus" : ""}`}>{section.badge}</span>
                 )}
               </div>
 
-              <div
-                className="lead-line__cells"
-                style={
-                  perRow > 0 && !rowsProp
-                    ? ({ display: "grid", gridTemplateColumns: `repeat(${perRow}, minmax(max-content, 1fr))`, alignItems: "end" } as CSSProperties)
-                    : undefined
-                }
-              >
+              <div className="lead-line__cells">
                 {row.map((index) => {
                   const cell = flowCells[index];
                   return renderCell(cell.lineIndex, cell.itemIndex, {

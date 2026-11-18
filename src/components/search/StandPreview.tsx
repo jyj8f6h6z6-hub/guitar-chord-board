@@ -39,9 +39,10 @@ interface StandPreviewProps {
   legendRows: readonly number[];
   spacing: Spacing;
   lyricPt: number;
-  printCols: number;
   title: string;
-  meta: string;
+  /** 標題下方資訊列：調號（靠左）、拍號（靠右） */
+  metaKey: string;
+  metaTime: string;
   viewMode: ViewMode;
   /** 螢幕版面：頁面就是整個畫面，不縮放 */
   actualSize: boolean;
@@ -71,9 +72,9 @@ export function StandPreview({
   legendRows,
   spacing,
   lyricPt,
-  printCols,
   title,
-  meta,
+  metaKey,
+  metaTime,
   viewMode,
   actualSize,
   performing,
@@ -188,8 +189,7 @@ export function StandPreview({
     <div
       className={`stand-preview${performing ? " is-performing" : ""}${actualSize ? " is-actual" : ""}`}
       ref={containerRef}
-      data-print-cols={printCols > 0 ? printCols : undefined}
-      style={{ "--print-scale": scale, "--print-cols": printCols || 1 } as CSSProperties}
+      style={{ "--print-scale": scale } as CSSProperties}
     >
       {!performing && (
         <div className="stand-preview__bar">
@@ -233,7 +233,12 @@ export function StandPreview({
               {pageNumber === 0 && (
                 <header className="stand-page__header">
                   <h1>{title}</h1>
-                  {meta && <p>{meta}</p>}
+                  {(metaKey || metaTime) && (
+                    <p className="stand-page__info">
+                      <span>{metaKey}</span>
+                      <span>{metaTime}</span>
+                    </p>
+                  )}
                 </header>
               )}
 
@@ -253,15 +258,14 @@ export function StandPreview({
                       lyricPt={lyricPt}
                       legendRows={legendRows}
                       rows={rows}
+                      verseStyle="songbook"
                       stretch
                     />
                   </div>
                 ))}
               </div>
 
-              <span className="stand-page__number">
-                {pageNumber + 1} / {pages.length}
-              </span>
+              <span className="stand-page__number">{pageNumber + 1}</span>
             </section>
           );
         })}

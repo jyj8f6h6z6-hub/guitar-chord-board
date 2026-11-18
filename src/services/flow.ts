@@ -93,3 +93,85 @@ export function packRows(cells: readonly FlowCell[], widths: readonly number[], 
   flush();
   return rows;
 }
+
+/**
+ * 依「每行小節數」排列：一列放 barsPerRow 個小節，段落開頭另起一列。
+ * 某一列放不下（超過 avail）就整首歌一起減少小節數（找最大的、全部放得下的數字）。
+ * 傳回排好的列與實際使用的小節數；barsPerRow ≤ 0 時依寬度自動排（used＝0）。
+ * 單一小節就比 avail 寬時，退回一般折行（可能在小節中間折）。
+ */
+export function packBars(
+  cells: readonly FlowCell[],
+  widths: readonly number[],
+  avail: number,
+  barsPerRow: number,
+): { rows: number[][]; used: number } {
+  if (barsPerRow <= 0) {
+    return { rows: packRows(cells, widths, avail, 0), used: 0 };
+  }
+
+  // 先把和弦分成小節（遇到小節線結尾、或下一個和弦是段落開頭就結束一小節）
+  const bars: number[][] = [];
+  let open: number[] = [];
+
+  cells.forEach((cell, index) => {
+    if (cell.forceBreak && open.length > 0) {
+      bars.push(open);
+      open = [];
+    }
+
+    open.push(index);
+
+    if (cell.barEnd) {
+      bars.push(open);
+      open = [];
+    }
+  });
+
+  if (open.length > 0) {
+    bars.push(open);
+  }
+
+  const barWidth = (bar: readonly number[]) => bar.reduce((sum, index) => sum + (widths[index] ?? 0), 0);
+  const attempt = (limit: number): number[][] | null => {
+    const rows: number[][] = [];
+    let current: number[][] = [];
+    let currentWidth = 0;
+    const flush = () => {
+      if (current.length > 0) {
+        rows.push(current.flat());
+      }
+
+      current = [];
+      currentWidth = 0;
+    };
+
+    for (const bar of bars) {
+      const width = barWidth(bar);
+
+      if (cells[bar[0]].forceBreak || current.length >= limit) {
+        flush();
+      }
+
+      current.push(bar);
+      currentWidth += width;
+
+      if (currentWidth > avail) {
+        return null;
+      }
+    }
+
+    flush();
+    return rows;
+  };
+
+  for (let limit = barsPerRow; limit >= 1; limit -= 1) {
+    const rows = attempt(limit);
+
+    if (rows) {
+      return { rows, used: limit };
+    }
+  }
+
+  return { rows: packRows(cells, widths, avail, 0), used: 1 };
+}

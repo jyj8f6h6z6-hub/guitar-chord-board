@@ -6,7 +6,7 @@ import {
   keyPrefersFlats,
   transposeChordSymbol,
 } from "../../services/chordTranspose";
-import { packRows } from "../../services/flow";
+import { packBars } from "../../services/flow";
 import {
   COLS_MAX,
   DEFAULT_OVERVIEW_SETTINGS,
@@ -19,7 +19,7 @@ import {
   saveOverviewSettings,
 } from "../../services/overviewSettings";
 import type { OverviewSettings } from "../../services/overviewSettings";
-import { allItems, countItems, effectiveSections, hasMelody, songMeta } from "../../services/songModel";
+import { allItems, countItems, effectiveSections, hasMelody, songMetaParts } from "../../services/songModel";
 import type { Song } from "../../types/song";
 import { ChordCard } from "../chord/ChordCard";
 import type { DiagramMode, FlowMetrics, Spacing } from "../song/LeadSheet";
@@ -54,6 +54,8 @@ interface StandRows {
   scale: number;
   rows: number[][];
   legendRows: number[];
+  /** 實際每行小節數（0＝自動） */
+  barsUsed: number;
   /** 這組排列是依哪一種紙張（尺寸）算的 */
   paperKey: string;
 }
@@ -63,7 +65,7 @@ interface StandPlan extends StandRows {
 }
 
 /** 暫時套上接近列印時的尺寸與版面（欄寬、字級、間距）來量，fn 執行完還原。 */
-function withPrintStyles<T>(box: HTMLElement, columnPx: number, scale: number, printCols: number, fn: (sheet: HTMLElement) => T): T | null {
+function withPrintStyles<T>(box: HTMLElement, columnPx: number, scale: number, fn: (sheet: HTMLElement) => T): T | null {
   const sheet = box.querySelector<HTMLElement>(".lead-sheet");
 
   if (!sheet) {
@@ -82,20 +84,11 @@ function withPrintStyles<T>(box: HTMLElement, columnPx: number, scale: number, p
   box.style.width = `${columnPx / scale}px`;
   sheet.style.cssText += ";padding:0;border:0;display:block;--lead-edge:calc(6px + 3.4em + 4px)";
 
-  const gridStyle =
-    printCols > 0 ? `;display:grid;grid-template-columns:repeat(${printCols},minmax(max-content,1fr));align-items:end` : "";
-
   (Array.from(sheet.children) as HTMLElement[]).forEach((item) => {
     remember(item);
 
     if (item.classList.contains("lead-line")) {
       item.style.cssText += ";grid-template-columns:3.4em 1fr;gap:4px;padding:calc(4px + var(--sp-row, 0px)) 2px";
-      const cells = item.querySelector<HTMLElement>(".lead-line__cells");
-
-      if (cells) {
-        remember(cells);
-        cells.style.cssText += gridStyle;
-      }
     }
   });
 
@@ -121,14 +114,13 @@ function planFlowRows(
   box: HTMLElement,
   paper: PaperSpec,
   printScale: number,
-  printFit: boolean,
-  printCols: number,
+  barsPerRow: number,
   metrics: FlowMetrics,
 ): StandRows | null {
   const columnPx = columnWidthPx(paper);
 
   // 量欄寬時不套固定欄數的格線（格線會被內容撐寬，量不準）
-  const measured = withPrintStyles(box, columnPx, printScale, 0, (sheet) => {
+  const measured = withPrintStyles(box, columnPx, printScale, (sheet) => {
     const cells = sheet.querySelector<HTMLElement>(".lead-line:not(.lead-flow-probe) .lead-line__cells");
 
     if (!cells) {
@@ -163,26 +155,14 @@ function planFlowRows(
     return null;
   }
 
-  let needed = Math.max(...metrics.widths, 1);
-  let shrink = true;
-
-  if (printCols > 0) {
-    // 固定每行幾個：每一欄等寬，整列寬度＝各欄最寬者相加
-    const columnMax: number[] = [];
-    packRows(metrics.cells, metrics.widths, 0, printCols).forEach((row) => {
-      row.forEach((cellIndex, position) => {
-        columnMax[position] = Math.max(columnMax[position] ?? 0, metrics.widths[cellIndex] ?? 0);
-      });
-    });
-    needed = columnMax.reduce((sum, value) => sum + value, 0);
-    shrink = printFit;
-  }
-
-  const fit = shrink ? Math.max(MIN_FIT, Math.min(1, columnPx / (printScale * (needed + overhead + 4)))) : 1;
+  // 只有「單一和弦寬過一欄」才縮小；每行小節數放不下時改成減少小節數（不縮小、不切掉）
+  const needed = Math.max(...metrics.widths, 1);
+  const fit = Math.max(MIN_FIT, Math.min(1, columnPx / (printScale * (needed + overhead + 4))));
   const scale = printScale * fit;
   const avail = columnPx / scale - overhead - 2;
+  const packed = packBars(metrics.cells, metrics.widths, avail, barsPerRow);
 
-  return { scale, rows: packRows(metrics.cells, metrics.widths, avail, printCols), legendRows: measured?.legendRows ?? [], paperKey: "" };
+  return { scale, rows: packed.rows, barsUsed: packed.used, legendRows: measured?.legendRows ?? [], paperKey: "" };
 }
 
 /**
@@ -193,7 +173,6 @@ function planColumns(
   box: HTMLElement,
   paper: PaperSpec,
   scale: number,
-  printCols: number,
 ): { starts: number[] } | null {
   const columnPx = columnWidthPx(paper);
   const pageHeight = (paper.height - 2 * paper.margin) * PX_PER_MM;
@@ -203,7 +182,7 @@ function planColumns(
   const zoom = parseFloat(getComputedStyle(document.querySelector<HTMLElement>(".stand-preview__pages") ?? document.body).zoom) || 1;
   const headerHeight = previewHeader ? previewHeader.getBoundingClientRect().height / zoom + 14 : 87;
 
-  const measured = withPrintStyles(box, columnPx, scale, printCols, (sheet) => {
+  const measured = withPrintStyles(box, columnPx, scale, (sheet) => {
     const items = Array.from(sheet.children).filter((element) => !element.classList.contains("lead-flow-measure") && !element.classList.contains("lead-flow-probe")) as HTMLElement[];
     return {
       heights: items.map((item) => (item.getBoundingClientRect().height + 6) * scale * 1.004),
@@ -283,7 +262,6 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const [settings, setSettingsState] = useState<OverviewSettings>(() => loadOverviewSettings(song.id));
   const [showMelody, setShowMelody] = usePersistentState<boolean>("guitar-chord-board:show-melody", true);
   const [printPaper, setPrintPaper] = usePersistentState<PrintPaper>("guitar-chord-board:print-paper", "default");
-  const [printFit, setPrintFit] = usePersistentState<boolean>("guitar-chord-board:print-fit", true);
   const [viewMode, setViewMode] = usePersistentState<ViewMode>("guitar-chord-board:stand-view", "page");
   const [panelOpen, setPanelOpen] = usePersistentState<boolean>("guitar-chord-board:overview-panel", true);
   const [performing, setPerforming] = useState(false);
@@ -315,7 +293,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
     saveOverviewSettings(song.id, next);
   };
 
-  const { lyricPt, diagramPx, printCols, diagramMode } = settings;
+  const { lyricPt, diagramPx, barsPerRow, diagramMode } = settings;
   const diagramStyle = useMemo(
     () => ({ fretPct: settings.fretPct, linePct: settings.linePct, dotPct: settings.dotPct }),
     [settings.fretPct, settings.linePct, settings.dotPct],
@@ -327,6 +305,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   const boxRef = useRef<HTMLDivElement>(null);
   const [flowMetrics, setFlowMetrics] = useState<FlowMetrics | null>(null);
   const [standRows, setStandRows] = useState<StandRows | null>(null);
+  const [selfBarsUsed, setSelfBarsUsed] = useState(0);
   const [standPlan, setStandPlan] = useState<StandPlan | null>(null);
   const standPlanRef = useRef<StandPlan | null>(null);
   standPlanRef.current = standPlan;
@@ -489,7 +468,10 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
   }, [performing]);
 
   const items = useMemo(() => allItems(song), [song]);
-  const printMeta = songMeta(isPreviewing ? { ...song, key: targetKey } : song);
+  const metaParts = songMetaParts(isPreviewing ? { ...song, key: targetKey } : song);
+  const metaKey = `${metaParts.key}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`;
+  const printMeta = metaKey || metaParts.time;
+  const barsShown = standMode ? (standRows?.barsUsed ?? 0) : selfBarsUsed;
   const total = countItems(song);
   const sections = effectiveSections(song);
 
@@ -519,7 +501,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
 
     const compute = () => {
       if (!cancelled) {
-        const planned = planFlowRows(box, paper, printScale, printFit, printCols, flowMetrics);
+        const planned = planFlowRows(box, paper, printScale, barsPerRow, flowMetrics);
         setStandRows(planned ? { ...planned, paperKey } : null);
       }
     };
@@ -531,7 +513,7 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [standMode, printFit, printScale, paperKey, paper, printCols, flowMetrics]);
+  }, [standMode, printScale, paperKey, paper, barsPerRow, flowMetrics]);
 
   // 譜架版面第二步：排好列之後，量每一列真正的高度，依序塞進各欄。
   useEffect(() => {
@@ -542,10 +524,10 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
       return undefined;
     }
 
-    const plan = planColumns(box, paper, standRows.scale, printCols);
+    const plan = planColumns(box, paper, standRows.scale);
     setStandPlan(plan ? { ...standRows, ...plan } : null);
     return undefined;
-  }, [standMode, standRows, paper, printCols, spacing]);
+  }, [standMode, standRows, paper, spacing]);
 
   const uniqueEntries = useMemo(() => {
     const seen = new Map<string, { symbol: string; shapeId?: string; count: number }>();
@@ -605,9 +587,9 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
       <div className="print-only print-header">
         <h1>{song.title.trim() || "和弦譜"}</h1>
         {printMeta && (
-          <p>
-            {printMeta}
-            {isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}
+          <p className="print-header__info">
+            <span>{metaKey}</span>
+            <span>{metaParts.time}</span>
           </p>
         )}
       </div>
@@ -839,27 +821,19 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               )}
 
               <StepperRange
-                label="列印每行和弦數"
-                value={printCols === 0 ? 1 : printCols}
+                label="每行小節數"
+                value={barsPerRow === 0 ? 1 : barsPerRow}
                 min={1}
                 max={COLS_MAX}
-                valueText={(value) => (value <= 1 ? "自動" : "個")}
-                onChange={(value) => updateSettings({ printCols: value <= 1 ? 0 : value })}
-                hint="最左邊（1）＝自動。固定後每欄等寬、小節線上下對齊"
+                valueText={(value) => (value <= 1 ? "自動" : "小節")}
+                onChange={(value) => updateSettings({ barsPerRow: value <= 1 ? 0 : value })}
+                hint="最左邊（1）＝依寬度自動。設定後每行填滿整行寬度；放不下時會自動減少小節數，不會被切掉"
               />
 
-              {layout === "lead" && printCols > 0 && (
-                <div className="segmented-control" role="group" aria-label="整行不換排">
-                  <button
-                    type="button"
-                    className={printFit ? "is-active" : ""}
-                    aria-pressed={printFit}
-                    onClick={() => setPrintFit(!printFit)}
-                    title="自動縮小，讓每一行的和弦都排在同一排，不會有和弦掉到下一排"
-                  >
-                    整行不換排（自動縮小）
-                  </button>
-                </div>
+              {barsPerRow > 0 && barsShown > 0 && barsShown < barsPerRow && (
+                <p className="overview-panel__note" role="status">
+                  已自動改為每行 {barsShown} 小節
+                </p>
               )}
             </div>
           )}
@@ -889,14 +863,13 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
             </span>
           </div>
 
-          {standMode && <style>{`@page { size: ${paper.name} landscape; margin: 12mm; }`}</style>}
+          {standMode && <style>{`@page { size: ${paper.name} landscape; margin: 12mm; @bottom-center { content: counter(page); font-size: 9pt; color: #555; } }`}</style>}
 
           <div
             ref={boxRef}
             className={`print-scale-box${standMode ? " is-stand-hidden" : ""}`}
             data-paper={standMode ? paper.value : undefined}
-            data-print-cols={printCols > 0 ? printCols : undefined}
-            style={{ "--print-scale": printScale, "--print-cols": printCols || 1 } as React.CSSProperties}
+            style={{ "--print-scale": printScale } as React.CSSProperties}
           >
           {total === 0 ? (
             <div className="notice">尚未建立和弦編排。請先前往「① 建立和弦編排」加入並排列歌曲和弦。</div>
@@ -915,8 +888,9 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               rows={standMode ? standRows?.rows : undefined}
               legendRows={standMode ? standRows?.legendRows : undefined}
               measureWidths={standMode}
-              perRow={standMode ? 0 : printCols}
-              fitRows={printFit}
+              perRow={standMode ? 0 : barsPerRow}
+              verseStyle="songbook"
+              onBarsUsed={standMode ? undefined : setSelfBarsUsed}
               onFlowMetrics={standMode ? setFlowMetrics : undefined}
             />
           ) : layout === "cards" ? (
@@ -982,9 +956,9 @@ export function SongChordOverview({ song, onApplyTransposition, onKeyChange }: S
               viewMode={viewMode}
               actualSize={actualSize}
               performing={performing}
-              printCols={printCols}
               title={song.title.trim() || "和弦譜"}
-              meta={`${printMeta}${isPreviewing && sourceKey !== targetKey ? `（原調 ${keyDisplay(sourceKey)}）` : ""}`}
+              metaKey={metaKey}
+              metaTime={metaParts.time}
             />
           )}
         </div>

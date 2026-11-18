@@ -263,7 +263,8 @@ function melodyTonic(song: Song): string | null {
 }
 
 /** 「D 大調 2/4」這樣的標題文字；有旋律時加上簡譜的「1=D」。 */
-export function songMeta(song: Song): string {
+/** 標題下方資訊列：調號（靠左）與拍號（靠右）。 */
+export function songMetaParts(song: Song): { key: string; time: string } {
   const parts: string[] = [];
 
   if (song.key) {
@@ -278,11 +279,12 @@ export function songMeta(song: Song): string {
     }
   }
 
-  if (song.timeSignature) {
-    parts.push(song.timeSignature);
-  }
+  return { key: parts.join(" "), time: song.timeSignature ?? "" };
+}
 
-  return parts.join(" ");
+export function songMeta(song: Song): string {
+  const { key, time } = songMetaParts(song);
+  return [key, time].filter(Boolean).join(" ");
 }
 
 /* ---------- 旋律、小節線樣式 ---------- */

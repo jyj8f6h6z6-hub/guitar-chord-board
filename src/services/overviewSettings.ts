@@ -4,7 +4,8 @@ import type { DiagramMode } from "../components/song/LeadSheet";
 export interface OverviewSettings {
   lyricPt: number;
   diagramPx: number;
-  printCols: number;
+  /** 每行小節數（0＝依寬度自動） */
+  barsPerRow: number;
   spChord: number;
   spMelody: number;
   spLyric: number;
@@ -29,7 +30,7 @@ export const SPACING_RANGE = { chord: [-6, 24], melody: [-6, 24], lyric: [-6, 24
 export const DEFAULT_OVERVIEW_SETTINGS: OverviewSettings = {
   lyricPt: PT_MIN,
   diagramPx: 72,
-  printCols: 0,
+  barsPerRow: 0,
   spChord: 0,
   spMelody: 0,
   spLyric: 0,
@@ -68,7 +69,7 @@ function sanitize(raw: unknown): OverviewSettings | null {
   return {
     lyricPt: clamp(source.lyricPt, PT_MIN, PT_MAX, defaults.lyricPt),
     diagramPx: clamp(source.diagramPx, DIAGRAM_MIN, DIAGRAM_MAX, defaults.diagramPx),
-    printCols: clamp(source.printCols, 0, COLS_MAX, defaults.printCols),
+    barsPerRow: clamp(source.barsPerRow, 0, COLS_MAX, defaults.barsPerRow),
     spChord: clamp(source.spChord, SPACING_RANGE.chord[0], SPACING_RANGE.chord[1], 0),
     spMelody: clamp(source.spMelody, SPACING_RANGE.melody[0], SPACING_RANGE.melody[1], 0),
     spLyric: clamp(source.spLyric, SPACING_RANGE.lyric[0], SPACING_RANGE.lyric[1], 0),
@@ -94,7 +95,6 @@ function legacySettings(): OverviewSettings {
       diagramPx:
         readJson("guitar-chord-board:diagram-px") ??
         (typeof legacySize === "string" ? diagramSizes[legacySize] : undefined),
-      printCols: readJson("guitar-chord-board:print-cols"),
       spChord: readJson("guitar-chord-board:sp-chord"),
       spMelody: readJson("guitar-chord-board:sp-melody"),
       spLyric: readJson("guitar-chord-board:sp-lyric"),

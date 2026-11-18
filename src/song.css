@@ -1798,13 +1798,6 @@ body.is-performing {
   .lead-sheet {
     --lead-edge: calc(6px + 3.4em + 4px);
   }
-
-  /* 固定每行和弦數：每欄等寬並填滿整行，小節線上下對齊 */
-  .print-scale-box[data-print-cols] .lead-line__cells {
-    display: grid;
-    grid-template-columns: repeat(var(--print-cols), minmax(max-content, 1fr));
-    align-items: end;
-  }
 }
 
 @media print {
@@ -1996,11 +1989,6 @@ body.is-performing {
   border-left: 4px solid #111111;
 }
 
-.stand-preview[data-print-cols] .stand-col .lead-line__cells {
-  display: grid;
-  grid-template-columns: repeat(var(--print-cols), minmax(max-content, 1fr));
-  align-items: end;
-}
 
 .stand-col .lead-cell__chord,
 .stand-col .lead-cell__lyric,
@@ -2830,4 +2818,60 @@ body.is-performing {
 .song-pinbar.is-pinned .song-palette__chip .palette-chord {
   min-height: 38px;
   padding: 0 10px;
+}
+
+/* ================= 1.4.0-exp.19：每行小節數、歌本樣式、標題資訊 ================= */
+
+/* 第 2 節以後的歌詞：印在譜下方，兩句並排 */
+.lead-verse__texts {
+  display: grid;
+  grid-template-columns: 2.4em 1fr 1fr;
+  gap: 2px 1.2em;
+  align-items: baseline;
+  padding-left: var(--lead-gutter);
+  letter-spacing: 0.03em;
+}
+
+.lead-verse__no {
+  color: var(--muted);
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+.stand-col .lead-verse__no,
+.stand-col .lead-verse__text {
+  color: #111111;
+}
+
+@media print {
+  .lead-verse__no {
+    color: #111111;
+  }
+}
+
+/* 標題：置中粗體；調號靠左、拍號靠右；頁碼在頁面下方中間 */
+.print-header h1,
+.stand-page__header h1 {
+  text-align: center;
+  font-weight: 800;
+}
+
+.print-header__info,
+.stand-page__info {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stand-page__number {
+  right: 0;
+  left: 0;
+  text-align: center;
+}
+
+.overview-panel__note {
+  margin: 4px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+  font-weight: 700;
 }
